@@ -6,7 +6,7 @@ MAKEFLAGS += -rR
 ARCH := x86_64
 
 # Default user QEMU flags. These are appended to the QEMU command calls.
-QEMUFLAGS := -m 2G
+QEMUFLAGS := -m 2G -debugcon stdio #-enable-kvm
 
 override IMAGE_NAME := atlas_os-$(ARCH)
 
@@ -166,14 +166,14 @@ kernel: kernel-deps
 	$(MAKE) -C kernel
 
 $(IMAGE_NAME).iso: limine/limine kernel
-	rm -rf iso_root
+	#rm -rf iso_root
 	mkdir -p iso_root/boot
 	cp -v kernel/bin-$(ARCH)/kernel64.sysaxf iso_root/boot/
 	mkdir -p iso_root/boot/sys64
-	cp -v kernel/bin-$(ARCH)/initramfs.axf iso_root/boot/sys64/initramfs.axf
+	cp -v kernel/a_depends/initramfs.axf iso_root/boot/sys64/initramfs.axf
 	mkdir -p iso_root/boot/sys64/fonts
-	cp -v kernel/bin-$(ARCH)/zap-light16.psf iso_root/boot/sys64/fonts/zap-light16.psf
-	cp -v kernel/bin-$(ARCH)/kern64.config iso_root/boot/sys64/kern64.config
+	cp -v kernel/a_depends/zap-light16.psf iso_root/boot/sys64/fonts/zap-light16.psf
+	cp -v kernel/a_depends/kern64.config iso_root/boot/sys64/kern64.config
 	mkdir -p iso_root/boot/limine
 	cp -v limine.conf iso_root/boot/limine/
 	mkdir -p iso_root/EFI/BOOT
@@ -181,12 +181,12 @@ ifeq ($(ARCH),x86_64)
 	cp -v limine/limine-bios.sys limine/limine-bios-cd.bin limine/limine-uefi-cd.bin iso_root/boot/limine/
 	cp -v limine/BOOTX64.EFI iso_root/EFI/BOOT/
 	cp -v limine/BOOTIA32.EFI iso_root/EFI/BOOT/
-	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
-		-no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
-		-apm-block-size 2048 --efi-boot boot/limine/limine-uefi-cd.bin \
-		-efi-boot-part --efi-boot-image --protective-msdos-label \
-		iso_root -o $(IMAGE_NAME).iso
-	./limine/limine bios-install $(IMAGE_NAME).iso
+	xorriso -as mkisofs -R -r -J -b boot/limine/limine-uefi-cd.bin \
+			-no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
+			-apm-block-size 2048 --efi-boot boot/limine/limine-uefi-cd.bin \
+			-efi-boot-part --efi-boot-image --protective-msdos-label \
+			--esp --iso-level 3 \
+			-o atlas_os-x86_64.iso iso_root
 endif
 ifeq ($(ARCH),aarch64)
 	cp -v limine/limine-uefi-cd.bin iso_root/boot/limine/
@@ -215,7 +215,7 @@ ifeq ($(ARCH),loongarch64)
 		-efi-boot-part --efi-boot-image --protective-msdos-label \
 		iso_root -o $(IMAGE_NAME).iso
 endif
-	rm -rf iso_root
+	#rm -rf iso_root
 
 $(IMAGE_NAME).hdd: limine/limine kernel
 	rm -f $(IMAGE_NAME).hdd

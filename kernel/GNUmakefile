@@ -1,8 +1,3 @@
-#LIBS
-MYLIBS:=
-#FLAGS
-MYFLAGS:=-mno-red-zone -mgeneral-regs-only
-
 # Nuke built-in rules and variables.
 MAKEFLAGS += -rR
 .SUFFIXES:
@@ -71,9 +66,7 @@ override SHARED_FLAGS := \
     -fno-stack-check \
     -fno-PIC \
     -ffunction-sections \
-    -fdata-sections \
-    $(MYLIBS) \
-    $(MYFLAGS)
+    -fdata-sections
 
 # Internal C/C++ preprocessor flags that should not be changed by the user.
 override CPPFLAGS_C := \
@@ -214,7 +207,6 @@ endif
 override OBJ := $(addprefix obj-$(ARCH)/,$(CFILES:.c=.c.o) $(CXXFILES:.cpp=.cpp.o) $(ASFILES:.S=.S.o))
 ifeq ($(ARCH),x86_64)
 override OBJ += $(addprefix obj-$(ARCH)/,$(NASMFILES:.asm=.asm.o))
-override OBJ += ~/Projects/AtlasOS/kernel/libaxf.o
 endif
 override HEADER_DEPS := $(addprefix obj-$(ARCH)/,$(CFILES:.c=.c.d) $(CXXFILES:.cpp=.cpp.d) $(ASFILES:.S=.S.d))
 

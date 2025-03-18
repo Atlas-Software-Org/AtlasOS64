@@ -6,12 +6,14 @@
 #include <stdarg.h>
 #include <HtKernelUtils/debug.h>
 #include <HtKernelUtils/io.h>
-#include <gfx.h>
+#include <gpx1.h>
 
 #include <GDT/gdt.h>
 #include <IDT/idt.h>
 
-#include <InterruptDescriptors/Drivers/KbdDev.h>
+// Drivers
+#include <InterruptDescriptors/Drivers/Kbd/KbdDev.h>
+#include <InterruptDescriptors/Drivers/ATA/ATA.h>
 
 #pragma region LIMINE
 __attribute__((used, section(".limine_requests")))
@@ -26,12 +28,6 @@ static volatile struct limine_framebuffer_request framebuffer_request = {
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_efi_memmap_request efi_memmap_request = {
     .id = LIMINE_EFI_MEMMAP_REQUEST,
-    .revision = 0
-};
-
-__attribute__((used, section(".limine_requests")))
-static volatile struct limine_rsdp_request rsdp_request = {
-    .id = LIMINE_RSDP_REQUEST,
     .revision = 0
 };
 
@@ -69,9 +65,6 @@ void kmain(void) {
     if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count < 1) {
         hcf();
     }
-    if (rsdp_request.response == NULL || rsdp_request.response->address == NULL) {
-        hcf();
-    }
     if (module_request.response == NULL || module_request.response->module_count < 3) {
         hcf();
     }
@@ -82,13 +75,15 @@ void kmain(void) {
         .memmap_size = efi_memmap_request.response->memmap_size,
         .desc_size = efi_memmap_request.response->desc_size
     };*/
-    void* rsdp_address = rsdp_request.response->address;
     struct limine_file *initrd = module_request.response->modules[0]; // INITRD
     e9debugk("Found initramfs.axf\n\r");
     struct limine_file *fontFile = module_request.response->modules[1]; // ZAP LIGHT 16 FONT
     e9debugk("Found zap-light16.psf\n\r");
     struct limine_file *osCfg = module_request.response->modules[2]; // OS CFG
     e9debugk("Found kern64.config\n\r");
+    if (((uint8_t *)osCfg->address)[0] == '0') {
+        e9 = 0x80;
+    }      
     
     // Cast font file address properly
     PSF1_HEADER* fontHeader = (PSF1_HEADER*)fontFile->address;
@@ -112,6 +107,10 @@ void kmain(void) {
     finishedFont->psf1_Header = fontHeader;
     finishedFont->glyphBuffer = glyphBuffer;
 
+    //char* ata_name = "No device was found! STUB";
+    //ata_identify_name(&ata_name);
+    //e9debugkf("Found ATA device: %s\n", ata_name);
+
     e9debugk("Initializing graphics\n\r");
     InitGfx(framebuffer);
     main_psf1_font = finishedFont;
@@ -122,17 +121,29 @@ void kmain(void) {
         main_psf1_font = finishedFont;
         e9debugk("Graphics initialized\n\r");
     }
-
+    
     DrawRect(0, 0, GetFb()->width, GetFb()->height, 0xFF4C565E);
-
+    
     e9debugkf("\033[5m\033[31mClosing E9 Debug log, switching to graphics debugging\033[0m\n\r");
 
     DrawRect(25, 25, 500, 300, 0xFF282828);
     DrawRect(25, 25, 500, 22, 0xFF202020);
     DrawRect(503, 25, 22, 22, 0xFFE82828);
 
+    DrawRect(25, 505, 300, 175, 0xFF282828);
+    DrawRect(25, 505, 300, 22, 0xFF202020);
+    DrawRect(303, 505, 22, 22, 0xFFE82828);
+
     FontPutStr("Startup", 30, 27, 0xFFFFFFFF);
-    FontPutChar('x', 510, 27, 0xFFFFFFFF);
+    FontPutChar('x', 515, 27, 0xFFFFFFFF);
+
+    FontPutStr("File Manager", 30, 507, 0xFFFFFFFF);
+    FontPutChar('x', 310, 507, 0xFFFFFFFF);
+
+    // FILE MANAGER DISPLAY //
+    DrawRect(25, 527, 75, 153, 0xFF383838);
+
+    //FontPutStr(ata_name, 30, 530, 0xFFFFFFFF);
 
     ClearColor = 0xFF282828;
 
@@ -163,6 +174,8 @@ void kmain(void) {
 
     for (volatile int i = 0; i < 1000; i++) { asm volatile ("nop"); }
 
+    idt_set_descriptor(0x21, &KeyboardInt_Hndlr, 0x8E);
+
     init_exceptions();       // Initialize CPU exception handlers
     idtr_t idtr_ = idt_init();              // Initialize IDT (register handlers)
     
@@ -174,6 +187,13 @@ void kmain(void) {
     e9debugkf("IDT Base: %p, Limit: %x\n", idtr_.base, idtr_.limit);
     e9debugkf("Keyboard handler base: %p\n", &KeyboardInt_Hndlr);
 
+    uint8_t disk_lba0_data[512];
+    ata_read_sector(0, disk_lba0_data);
+    e9debugkf("%p", disk_lba0_data);
+    for (int i = 0; i <= 511; i++) {
+        e9debugkf("%x", disk_lba0_data[i]);
+    }
+    
     asm volatile ("sti");    // Enable interrupts AFTER everything is ready    
     
     IRQ_clear_mask(1);       // Unmask IRQ1 (keyboard)

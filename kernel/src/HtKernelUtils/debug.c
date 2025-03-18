@@ -1,8 +1,10 @@
 #include "debug.h"
 
+int e9 = 0xE9;
+
 void e9debugk(char* str) {
     while (*str) {
-        outb(0xE9, *str);
+        outb(e9, *str);
         str++;
     }
 }
@@ -10,7 +12,7 @@ void e9debugk(char* str) {
 void e9debugkn(char* str, int size) {
     int s = size;
     while (*str && s) {
-        outb(0xE9, *str);
+        outb(e9, *str);
         str++;
         s--;
     }

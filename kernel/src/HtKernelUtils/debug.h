@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include "io.h"
 
+extern int e9;
+
 void e9debugk(char* str);
 void e9debugkn(char* str, int size);
 int int_to_str(int num, char* buf);

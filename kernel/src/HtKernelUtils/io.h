@@ -22,3 +22,7 @@ uint32_t inl(uint16_t port);
 
 // Function to wait for port
 void IOWait();
+
+/* Block Transfer (String I/O) */
+void insw(uint16_t port, void* addr, int count);
+void outsw(uint16_t port, const void* addr, int count);

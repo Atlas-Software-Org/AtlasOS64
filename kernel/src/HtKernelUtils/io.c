@@ -40,3 +40,30 @@ uint32_t inl(uint16_t port) {
 void IOWait() {
     outb(0x80, 0x00);
 }
+
+/**
+ * Reads a series of 16-bit words from an I/O port into memory.
+ *
+ * @param port The I/O port to read from.
+ * @param addr The memory buffer to store data.
+ * @param count The number of 16-bit words to read.
+ */
+inline void insw(uint16_t port, void* addr, int count) {
+    asm volatile ("rep insw"
+                  : "+D"(addr), "+c"(count) // Destination address and counter
+                  : "d"(port)               // Source port
+                  : "memory");              // Clobbers memory
+}
+
+/**
+ * Writes a series of 16-bit words from memory to an I/O port.
+ *
+ * @param port The I/O port to write to.
+ * @param addr The memory buffer containing the data.
+ * @param count The number of 16-bit words to write.
+ */
+inline void outsw(uint16_t port, const void* addr, int count) {
+    asm volatile ("rep outsw"
+                  : "+S"(addr), "+c"(count) // Source address and counter
+                  : "d"(port));             // Destination port
+}

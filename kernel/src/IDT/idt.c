@@ -1,5 +1,5 @@
 #include "idt.h"
-#include <gfx.h>
+#include <gpx1.h>
 #include <HtKernelUtils/debug.h>
 
 typedef struct {
@@ -17,9 +17,103 @@ static idt_entry_t idt[256]; // Create an array of IDT entries; aligned for perf
 
 static idtr_t idtr;
 
-void exception_handler() {
+char error_codes[20][128] = {
+    "Division by 0", "Reserved1", "NMI Interrupt", "Breakpoint (INT3)", "Overflow (INTO)", "Bounds range exceeded (BOUND)", "Invalid opcode (UD2)",
+    "Device not available (WAIT/FWAIT)", "Double fault", "Coprocessor segment overrun", "Invalid TSS", "Segment not present", "Stack-segment fault",
+    "General protection fault (GPFault)", "Page fault", "Reserved2", "x87 FPU error", "Alignment check", "SIMD Floating-Point Exception", "Reserved3"
+};
+
+void exception_handler(int exception) {
     DrawRect(0, 0, GetFb()->width, GetFb()->height, 0xFF1E1E1E);
-    FontPutStr(":( An error just occured. Halting...", 12, 12, 0xFFFFFFFF);
+    FontPutStr(":( An error just occured. Halting...", 5, 5, 0xFFFF2222);
+    e9debugkf("\033[3m\e[1;31mError occured, exception no. 0x%x / %d\033[m\n", exception, exception);
+    switch (exception) {
+        case 0:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 1:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 2:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 3:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 4:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 5:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 6:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 7:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 8:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 9:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 10:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 11:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+            break;
+        case 12:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 13:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 14:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 15:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 16:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 17:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 18:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 19:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+        case 20:
+            e9debugkf("%s\n", error_codes[exception]);
+            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
+            break;
+    }
     __asm__ volatile ("cli; hlt"); // Completely hangs the computer
 }
 
