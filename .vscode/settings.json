@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "coroutine": "cpp",
+        "bitset": "c",
+        "gfx.h": "c",
+        "ranges": "c",
+        "debug.h": "c",
+        "cstdint": "c",
+        "idt.h": "c",
+        "ata.h": "c",
+        "gpx1.h": "c"
+    }
+}
