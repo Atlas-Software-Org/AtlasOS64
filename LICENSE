@@ -1,53 +1,69 @@
-END USER LICENSE AGREEMENT (EULA)
+Atlas Software License Agreement (ASLA)
+Last Updated: March 22nd, 2025
 
-Last Updated: March 15th, 2025
-
-This End User License Agreement ("Agreement") is a legal agreement between you ("User") and [Your Company/Name] ("Licensor") for the use of [Software Name] ("Software"). By installing, copying, or using the Software, you agree to be bound by the terms of this Agreement. If you do not agree, do not install or use the Software.
+This **Atlas Software License Agreement (ASLA)** ("Agreement") is a legal agreement between you ("User") and Atlas Software ("Licensor") for the use of AtlasOS64 ("Software"), which includes all source code, binaries, and related components. By installing, copying, or using the Software, you agree to be bound by the terms of this Agreement. If you do not agree, do not install or use the Software.
 
 ---
 
 1. LICENSE GRANT
-Licensor grants you a limited, non-exclusive, non-transferable, revocable license to use the Software solely for personal or internal business purposes, subject to the restrictions set forth in this Agreement.
+Licensor grants you a limited, non-exclusive, non-transferable, revocable license to use AtlasOS64 solely for personal or internal business purposes, subject to the restrictions set forth in this Agreement.
 
 ---
 
 2. RESTRICTIONS
 You agree that you will NOT:
-- Modify, distribute, sell, sublicense, or rent the Software.
-- Reverse engineer, decompile, or disassemble the Software.
-- Use the Software for illegal or unauthorized purposes.
-- Remove or alter any proprietary notices or labels on the Software.
+- Modify, distribute, sublicense, or rent AtlasOS64, source code, binaries, or any derivative works.
+- Create forks, plugins, additions, or modifications of AtlasOS64 without proper attribution to Atlas Software.
+- Remove or alter any proprietary notices, labels, or identifiers on AtlasOS64.
+- Use AtlasOS64 for illegal or unauthorized purposes.
 
 ---
 
-3. OWNERSHIP
-The Software is licensed, not sold. Licensor retains all rights, title, and interest in and to the Software, including all intellectual property rights.
+3. ATTRIBUTION REQUIREMENT
+If you redistribute, modify, or create derivative works based on AtlasOS64, you MUST provide clear attribution to Atlas Software. This must include the following statement:
+
+> "This software is a fork/plugin/mod/addition to AtlasOS64 and is originally owned by Atlas Software."
+
+This attribution must be displayed prominently in any redistributions or derivative works, whether in source code or binaries.
 
 ---
 
-4. DISCLAIMER OF WARRANTIES
-THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
+4. OWNERSHIP
+AtlasOS64, including any modifications, forks, or derivative works, is licensed, not sold. Licensor retains all rights, title, and interest in and to AtlasOS64, including all intellectual property rights. You do not acquire any rights in AtlasOS64 other than the limited license granted in this Agreement.
 
 ---
 
-5. LIMITATION OF LIABILITY
-IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+5. REMOVAL OF REDISTRIBUTIONS
+Atlas Software reserves the right to require the removal of any redistribution of AtlasOS64, including any derivative works, from any location, platform, or service. You agree to comply with such requests within a reasonable timeframe.
 
 ---
 
-6. TERMINATION
-This Agreement is effective until terminated. Your rights under this Agreement will terminate automatically if you violate any of its terms. Upon termination, you must cease all use of the Software and delete all copies.
+6. DISCLAIMER OF WARRANTIES
+AtlasOS64 is provided "AS IS" without warranties of any kind, either express or implied, including but not limited to implied warranties of merchantability, fitness for a particular purpose, and non-infringement.
 
 ---
 
-7. GOVERNING LAW
-This Agreement shall be governed by and construed in accordance with the laws of Qatar. Any disputes arising under or in connection with this Agreement shall be subject to the exclusive jurisdiction of the courts in Qatar International Court (QICDRC).
+7. LIMITATION OF LIABILITY
+IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, OR CONSEQUENTIAL DAMAGES ARISING OUT OF THE USE OR INABILITY TO USE AtlasOS64, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
 
 ---
 
-8. CONTACT INFORMATION
-If you have any questions about this Agreement, please contact adambassem256@gmail.com, atlassoftwarecpu@gmail.com.
+8. TERMINATION
+This Agreement is effective until terminated. Your rights under this Agreement will terminate automatically if you violate any of its terms. Upon termination, you must cease all use of AtlasOS64 and delete all copies.
 
 ---
 
-By using the Software, you acknowledge that you have read and understood this Agreement and agree to be bound by its terms.
+9. GOVERNING LAW
+This Agreement shall be governed by and construed in accordance with the laws of **Qatar**. Any disputes arising under or in connection with this Agreement shall be subject to the exclusive jurisdiction of the courts in **Qatar International Court (QICDRC)**.
+
+---
+
+10. CONTACT INFORMATION
+If you have any questions about this Agreement, please contact Atlas Software at:
+
+- **Email**: [adambassem256@gmail.com](mailto:adambassem256@gmail.com)  
+- **Email**: [atlassoftwarecpu@gmail.com](mailto:atlassoftwarecpu@gmail.com)
+
+---
+
+By using AtlasOS64, you acknowledge that you have read and understood this Agreement and agree to be bound by its terms.
