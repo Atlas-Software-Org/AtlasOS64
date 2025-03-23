@@ -80,7 +80,9 @@ extern uint32_t ClearColor;
 void InitGfx(struct limine_framebuffer* fb);
 struct limine_framebuffer *GetFb();
 void PutPx(uint64_t x, uint64_t y, uint32_t clr);
+void AddrPutPx(volatile uint32_t* addr, uint64_t x, uint64_t y, uint32_t clr);
 uint32_t GetPx(uint64_t x, uint64_t y);
+uint32_t AddrGetPx(volatile uint32_t* addr, uint64_t x, uint64_t y);
 void DrawRect(uint64_t x, uint64_t y, uint64_t width, uint64_t len, uint32_t clr);
 
 void FontPutChar(char c, uint64_t x, uint64_t y, uint32_t clr);

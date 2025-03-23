@@ -18,9 +18,17 @@ void PutPx(uint64_t x, uint64_t y, uint32_t clr) {
     fb_ptr[y * (main_fb->pitch / (main_fb->bpp/8)) + x] = clr;
 }
 
+void AddrPutPx(volatile uint32_t* addr, uint64_t x, uint64_t y, uint32_t clr) {
+    addr[y * (main_fb->pitch / (main_fb->bpp/8)) + x] = clr;
+}
+
 uint32_t GetPx(uint64_t x, uint64_t y) {
     volatile uint32_t *fb_ptr = main_fb->address;
     return (fb_ptr[y * (main_fb->pitch / (main_fb->bpp/8)) + x]);
+}
+
+uint32_t AddrGetPx(volatile uint32_t* addr, uint64_t x, uint64_t y) {
+    return (addr[y * (main_fb->pitch / (main_fb->bpp/8)) + x]);
 }
 
 void DrawRect(uint64_t x, uint64_t y, uint64_t width, uint64_t len, uint32_t clr) {

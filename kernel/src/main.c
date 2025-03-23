@@ -161,10 +161,12 @@ void kmain(void) {
     pool_init();
 
     void* window_buffer = page_alloc_n(256);
-    Window* mywin = CreateWindow("Hello, World!", 320, 200, window_buffer);
+    Window* mywin = CreateWindow("Hello, World!", 512, 306, window_buffer);
     Repaint(mywin);
 
-    WinPutPx(mywin, 10, 20, 0xFF00FF);
+    //WinPutPx(mywin, 10, 20, 0xFF00FF);
+    volatile uint32_t* ptr = (volatile uint32_t*)mywin->winfb->address;
+    ptr[20 * (GetFb()->pitch/4) + 10] = 0xFF00FF;
 
     Repaint(mywin);
 
