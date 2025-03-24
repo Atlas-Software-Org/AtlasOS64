@@ -40,13 +40,3 @@ void pic_disable(void);
 
 void IRQ_set_mask(uint8_t IRQline);
 void IRQ_clear_mask(uint8_t IRQline);
-
-/* Helper func */
-static uint16_t __pic_get_irq_reg(int ocw3);
-/* Returns the combined value of the cascaded PICs irq request register */
-uint16_t pic_get_irr(void);
-/* Returns the combined value of the cascaded PICs in-service register */
-uint16_t pic_get_isr(void);
-
-void NMI_enable();
-void NMI_disable();

@@ -1,27 +1,54 @@
 #include <gpx1.h>
 #include <paging/paging.h>
 
+typedef struct {
+    uint64_t x;
+    uint64_t y;
+    uint64_t width;
+    uint64_t height;
+} Rect;
+
+void FillRect(Rect rect, uint32_t color) {
+    DrawRect(rect.x, rect.y, rect.width, rect.height, color);
+}
+
+void Blit(void* source, uint32_t pitch, Rect dest) {
+    uint32_t* src_pixels = (uint32_t*)source;
+    uint32_t pixels_per_row = pitch / 4;
+
+    for (uint64_t y = 0; y < dest.height; y++) {
+        for (uint64_t x = 0; x < dest.width; x++) {
+            uint32_t color = src_pixels[y * pixels_per_row + x];
+            PutPx(dest.x + x, dest.y + y, color);
+        }
+    }
+}
+
 void Repaint(Window* window_ctx) {
-    if (window_ctx == NULL || window_ctx->winfb == NULL) {
+    if (!window_ctx || !window_ctx->winfb) {
         return;
     }
-    
-    for (uint64_t w = 0; w < window_ctx->winfb->width; w++) {
-        for (uint64_t h = 0; h < 22; h++) {
-            PutPx(window_ctx->winfb->dispx + w, window_ctx->winfb->dispy + h, 0xFF282828);
-        }
 
-        for (uint64_t h = 22; h < window_ctx->winfb->height + 22; h++) {
-            volatile uint32_t* win_ptr = window_ctx->winfb->address;
-            uint32_t color = win_ptr[h * (window_ctx->winfb->pitch / 4) + w];
-            PutPx(window_ctx->winfb->dispx + w, window_ctx->winfb->dispy + h, color);
+    for (uint64_t x = 0; x < window_ctx->winfb->width; x++) {
+        for (uint64_t y = 0; y < 22; y++) {
+            PutPx(window_ctx->winfb->dispx + x, window_ctx->winfb->dispy + y, 0xFF282828);
         }
     }
 
-    for (uint64_t w = 0; w < 22; w++) {
-        for (uint64_t h = 0; h < 22; h++) {
-            PutPx(window_ctx->winfb->dispx + window_ctx->winfb->width - 22 + w,
-                  window_ctx->winfb->dispy + h, 0xFFFF0000);
+    volatile uint32_t* win_ptr = (volatile uint32_t*)window_ctx->winfb->address;
+    uint64_t pitch_in_pixels = window_ctx->winfb->pitch / 4;
+    for (uint64_t y = 0; y < window_ctx->winfb->height; y++) {
+        for (uint64_t x = 0; x < window_ctx->winfb->width; x++) {
+            uint32_t color = win_ptr[y * pitch_in_pixels + x];
+            PutPx(window_ctx->winfb->dispx + x, window_ctx->winfb->dispy + 22 + y, color);
+        }
+    }
+
+    for (uint64_t x = 0; x < 22; x++) {
+        for (uint64_t y = 0; y < 22; y++) {
+            PutPx(window_ctx->winfb->dispx + window_ctx->winfb->width - 22 + x,
+                  window_ctx->winfb->dispy + y,
+                  0xFFFF0000);
         }
     }
 
@@ -29,11 +56,9 @@ void Repaint(Window* window_ctx) {
     while (window_ctx->WinName[title_length] != '\0') {
         title_length++;
     }
-
-    int title_width = title_length * 8;
+    int title_width = title_length * 8;  // Each character is 8px wide.
     int title_x = window_ctx->winfb->dispx + (window_ctx->winfb->width - title_width) / 2;
-    int title_y = window_ctx->winfb->dispy + (22 - 16) / 2;
-
+    int title_y = window_ctx->winfb->dispy + (22 - 16) / 2; // Assuming 16px tall font
     FontPutStr(window_ctx->WinName, title_x, title_y, 0xFFFFFFFF);
 
     int x_pos = window_ctx->winfb->dispx + window_ctx->winfb->width - 22 + (22 - 8) / 2;
@@ -41,14 +66,12 @@ void Repaint(Window* window_ctx) {
     FontPutChar('X', x_pos, y_pos, 0xFFFFFFFF);
 }
 
-#include <HtKernelUtils/io.h>
-
 static size_t calculate_pages(uint32_t width, uint32_t height) {
     size_t total_bytes = (size_t)width * height * 4;
     return (total_bytes + 4095) / 4096;
 }
 
-Window* CreateWindow(char* title, uint64_t width, uint64_t height, void* address) {
+Window* CreateWindow(char* title, uint64_t width, uint64_t height, void (*FinishWindowProc)) {
     Window* winctx = (Window*)page_alloc(sizeof(Window) / 4096 + 1);
     if (!winctx) return NULL;
 
@@ -65,6 +88,15 @@ Window* CreateWindow(char* title, uint64_t width, uint64_t height, void* address
     winctx->winfb->height = height;
     winctx->winfb->dispx = 25;
     winctx->winfb->dispy = 25;
+    Button_t exit = {0};
+    exit.Handler = FinishWindowProc;
+    exit.Position.X = 25 + width - 22;
+    exit.Position.Y = 25 + height - 22;
+    exit.Scale.X = 22;
+    exit.Scale.Y = 22;
+    exit.Enabled = 1;
+    
+    winctx->exit_button = exit;      
 
     for (uint64_t x = 0; x < width; x++) {
         for (uint64_t y = 0; y < height; y++) {

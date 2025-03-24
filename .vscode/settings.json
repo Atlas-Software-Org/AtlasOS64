@@ -8,6 +8,9 @@
         "cstdint": "c",
         "idt.h": "c",
         "ata.h": "c",
-        "gpx1.h": "c"
+        "gpx1.h": "c",
+        "e1000.h": "c",
+        "pit.h": "c",
+        "sched.h": "c"
     }
 }

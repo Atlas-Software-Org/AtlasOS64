@@ -13,7 +13,10 @@
 #include <IDT/idt.h>
 
 // Drivers
-#include <InterruptDescriptors/Drivers/Kbd/KbdDev.h>
+#include <InterruptDescriptors/Drivers/PIT/PIT.h>
+#include <InterruptDescriptors/Drivers/PIT/Scheduler/Sched.h>
+#include <InterruptDescriptors/Drivers/KeyboardDev/KbdDev.h>
+#include <InterruptDescriptors/Drivers/MouseDev/MouseDev.h>
 
 #include <InterruptDescriptors/Syscall.h>
 
@@ -30,6 +33,12 @@ static volatile struct limine_framebuffer_request framebuffer_request = {
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_module_request module_request = {
     .id = LIMINE_MODULE_REQUEST,
+    .revision = 0
+};
+
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_rsdp_request rsdp_request = {
+    .id = LIMINE_RSDP_REQUEST,
     .revision = 0
 };
 
@@ -52,9 +61,33 @@ static void hcf(void) {
 }
 #pragma endregion
 
+void Test1() {
+    outb(0xE9, 't');
+        e9debugkf("Counted to 1000: 1\n\r");
+}
+
+void Test2() {
+    outb(0xE9, 't');
+        e9debugkf("Counted to 1000: 2\n\r");
+}
+
+void Test3() {
+    outb(0xE9, 't');
+        e9debugkf("Counted to 1000: 3\n\r");
+}
+
+void Test4() {
+    outb(0xE9, 't');
+        e9debugkf("Counted to 1000: 4\n\r");
+}
+
+void Test5() {
+    outb(0xE9, 't');
+        e9debugkf("Counted to 1000: 5\n\r");
+}
+
 void kmain(void) {
     #pragma region Step1K
-    e9debugk("Loaded AtlasOS64\n\r");
     if (LIMINE_BASE_REVISION_SUPPORTED == false) {
         hcf();
     }
@@ -64,22 +97,20 @@ void kmain(void) {
     if (module_request.response == NULL || module_request.response->module_count < 3) {
         hcf();
     }
+    if (rsdp_request.response == NULL) {
+        hcf();
+    }
 
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
-    e9debugkf("Framebuffer: %dx%d, BPP: %d\n", framebuffer->width, framebuffer->height, framebuffer->bpp);
     struct limine_file *initrd = module_request.response->modules[0]; // INITRD
-    e9debugk("Found initramfs.axf\n\r");
     struct limine_file *fontFile = module_request.response->modules[1]; // ZAP LIGHT 16 FONT
-    e9debugk("Found zap-light16.psf\n\r");
     struct limine_file *osCfg = module_request.response->modules[2]; // OS CFG
-    e9debugk("Found kern64.config\n\r");
     if (((uint8_t *)osCfg->address)[0] == '0') {
         e9 = 0x80;
     }      
     
     PSF1_HEADER* fontHeader = (PSF1_HEADER*)fontFile->address;
     if (fontHeader->magic[0] != PSF1_MAGIC0 || fontHeader->magic[1] != PSF1_MAGIC1) {
-        e9debugk("Failed to verify font file\n\r");
         hcf();
     }
     
@@ -95,42 +126,28 @@ void kmain(void) {
     finishedFont->psf1_Header = fontHeader;
     finishedFont->glyphBuffer = glyphBuffer;
 
-    e9debugk("Initializing graphics\n\r");
     InitGfx(framebuffer);
     main_psf1_font = finishedFont;
     if (finishedFont == NULL) {
-        e9debugk("Error: finishedFont is not initialized\n\r");
         hcf();
     } else {
         main_psf1_font = finishedFont;
-        e9debugk("Graphics initialized\n\r");
     }
     
     DrawRect(0, 0, GetFb()->width, GetFb()->height, 0xFF4C565E);
+    uint64_t dash_width = GetFb()->width * 65 / 1920;
+    DrawRect(0, 0, dash_width, GetFb()->height, 0xFF3A444C);
     
-    e9debugkf("\033[31mClosing E9 Debug log, switching to graphics debugging\033[0m\n\r");
-
-    DrawRect(25, 25, 500, 300, 0xFF282828);
-    DrawRect(25, 25, 500, 22, 0xFF202020);
-    DrawRect(503, 25, 22, 22, 0xFFE82828);
-
-    FontPutStr("Startup", 30, 27, 0xFFFFFFFF);
-    FontPutChar('x', 510, 27, 0xFFFFFFFF);
-
     ClearColor = 0xFF282828;
+
+    pool_init();
     
-#pragma endregion
-
-    FontPutStr("[ LOG ] Logging enabled", 30, 50, 0xFFFFFFFF);
-
-    FontPutStr("[ SYS ] Initalizing GDT/IDT", 30, 66, 0xFFFFFFFF);
+    #pragma endregion
 
     GDTDescriptor gdtDescriptor;
     gdtDescriptor.Size = sizeof(GDT) - 1;
     gdtDescriptor.Offset = (uint64_t)&DefaultGDT;
     LoadGDT(&gdtDescriptor);
-
-    FontPutStr("[ SYS ] Initalized GDT Successfully", 30, 82, 0xFFFFFFFF);
 
     asm volatile ("cli");
 
@@ -142,7 +159,9 @@ void kmain(void) {
     outb(0x20, 0x20);
     outb(0xA0, 0x20);
 
+    idt_set_descriptor(0x20, &PITInt_Hndlr, 0x8E);
     idt_set_descriptor(0x21, &KeyboardInt_Hndlr, 0x8E);
+    idt_set_descriptor(0x2C, &MouseInt_Hndlr, 0x8E);
     idt_set_descriptor(0x80, &SyscallInt_Hndlr, 0x8F);
 
     init_exceptions();
@@ -151,24 +170,44 @@ void kmain(void) {
     uint16_t limit;
     uint64_t base;
     asm volatile ("sidt %0" : "=m" (idtr_));
-    e9debugkf("IDT Base: %p, Limit: %x\n", idtr_.base, idtr_.limit);
-    e9debugkf("Keyboard handler base: %p\n", &KeyboardInt_Hndlr);
 
     asm volatile ("sti");
     
+    outb(0x21, 0b11111000);
+    outb(0xA1, 0b11011111);
+    IRQ_clear_mask(0);
     IRQ_clear_mask(1);
+    IRQ_clear_mask(2);
+    IRQ_clear_mask(12);
+    IRQ_clear_mask(32);
 
-    pool_init();
+    InitPS2Mouse();
+    InitPitTimer();
 
-    void* window_buffer = page_alloc_n(256);
-    Window* mywin = CreateWindow("Hello, World!", 512, 306, window_buffer);
-    Repaint(mywin);
+    e9debugkf("Testing threading\n\r");
+    Thread* thrd1 = (Thread*)page_alloc();
+    Thread* thrd2 = (Thread*)page_alloc();
+    Thread* thrd3 = (Thread*)page_alloc();
+    Thread* thrd4 = (Thread*)page_alloc();
+    Thread* thrd5 = (Thread*)page_alloc();
+    
+    e9debugkf("Initalizing Threads\n\r");
+    thrd1->Handler = Test1;
+    thrd2->Handler = Test2;
+    thrd3->Handler = Test3;
+    thrd4->Handler = Test4;
+    thrd5->Handler = Test5;
 
-    //WinPutPx(mywin, 10, 20, 0xFF00FF);
-    volatile uint32_t* ptr = (volatile uint32_t*)mywin->winfb->address;
-    ptr[20 * (GetFb()->pitch/4) + 10] = 0xFF00FF;
+    e9debugkf("Creating threads\n\r");
+    int result = CreateThread(thrd1);
+    result = CreateThread(thrd2);
+    result = CreateThread(thrd3);
+    result = CreateThread(thrd4);
+    result = CreateThread(thrd5);
 
-    Repaint(mywin);
-
+    while (1) {
+        ProcessMousePacket();
+    }
+    
     hcf();
 }

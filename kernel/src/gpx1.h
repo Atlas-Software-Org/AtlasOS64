@@ -3,6 +3,25 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <limine.h>
+#include <stdbool.h>
+
+typedef struct Point{
+    long X;
+    long Y;
+} Point;
+
+extern bool MouseDrawn;
+extern uint32_t MouseCursorBuffer[16 * 16];
+extern uint32_t MouseCursorBufferAfter[16 * 16];
+extern Point CursorPosition;
+
+typedef struct _button_t {
+    char label[17];
+    void (*Handler)();
+    Point Position;
+    Point Scale;
+    int Enabled;
+} Button_t;
 
 struct window_t;
 
@@ -24,6 +43,7 @@ typedef struct window_t {
     WindowFramebuffer* winfb;
     RepaintFunc Repaint;
     uint8_t win_attr;
+    Button_t exit_button;
 } Window;
 
 #define MAX_WIN_USABLE 1024
@@ -32,9 +52,6 @@ typedef struct root_window_handle {
     int NumUsedWinHandles;
     Window WinHandles[MAX_WIN_USABLE];
 } RootWindowHandle;
-
-Window* CreateWindow(char* title, uint64_t width, uint64_t height, void* address);
-void Repaint(Window* window_ctx);
 
 #define PSF1_MAGIC0 0x36
 #define PSF1_MAGIC1 0x04
@@ -97,3 +114,9 @@ int DisplayGraphyx1(void* ptr, uint64_t size, uint64_t xpos, uint64_t ypos);
 void WinPutPx(Window* windowctx, uint64_t x, uint64_t y, uint32_t color);
 void WinPutStr(Window* windowctx, uint64_t x, uint64_t y, const char* str, uint32_t color);
 void WinPutChar(Window* windowctx, uint64_t x, uint64_t y, char c, uint32_t color);
+
+Window* CreateWindow(char* title, uint64_t width, uint64_t height, void (*FinishWindowProc));
+void Repaint(Window* window_ctx);
+
+void ClearMouseCursor(uint8_t* MouseCursor, Point Position);
+void DrawOverlayMouseCursor(uint8_t* MouseCursor, Point Position, uint32_t Colour);

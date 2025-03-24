@@ -28,91 +28,68 @@ char error_codes[20][128] = {
 void exception_handler(int exception) {
     DrawRect(0, 0, GetFb()->width, GetFb()->height, 0xFF1E1E1E);
     FontPutStr(":( An error just occured. Halting...", 5, 5, 0xFFFF2222);
-    e9debugkf("\033[3m\e[1;31mError occured, exception no. 0x%x / %d\033[m\n", exception, exception);
     switch (exception) {
         case 0:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 1:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 2:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 3:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 4:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 5:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 6:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 7:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 8:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 9:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 10:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 11:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
-            break;
         case 12:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 13:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 14:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 15:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 16:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 17:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 18:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 19:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
         case 20:
-            e9debugkf("%s\n", error_codes[exception]);
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
             break;
     }
@@ -239,39 +216,4 @@ void IRQ_clear_mask(uint8_t IRQline) {
     }
     value = inb(port) & ~(1 << IRQline);
     outb(port, value);        
-}
-
-#define PIC_READ_IRR                0x0a    /* OCW3 irq ready next CMD read */
-#define PIC_READ_ISR                0x0b    /* OCW3 irq service next CMD read */
-
-/* Helper func */
-static uint16_t __pic_get_irq_reg(int ocw3)
-{
-    /* OCW3 to PIC CMD to get the register values.  PIC2 is chained, and
-     * represents IRQs 8-15.  PIC1 is IRQs 0-7, with 2 being the chain */
-    outb(PIC1_COMMAND, ocw3);
-    outb(PIC2_COMMAND, ocw3);
-    return (inb(PIC2_COMMAND) << 8) | inb(PIC1_COMMAND);
-}
-
-/* Returns the combined value of the cascaded PICs irq request register */
-uint16_t pic_get_irr(void)
-{
-    return __pic_get_irq_reg(PIC_READ_IRR);
-}
-
-/* Returns the combined value of the cascaded PICs in-service register */
-uint16_t pic_get_isr(void)
-{
-    return __pic_get_irq_reg(PIC_READ_ISR);
-}
-
-void NMI_enable() {
-    outb(0x70, inb(0x70) & 0x7F);
-    inb(0x71);
-}
-
-void NMI_disable() {
-    outb(0x70, inb(0x70) | 0x80);
-    inb(0x71);
 }

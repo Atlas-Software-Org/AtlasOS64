@@ -5,6 +5,11 @@ struct limine_framebuffer* main_fb;
 PSF1_FONT* main_psf1_font;
 uint32_t ClearColor;
 
+bool MouseDrawn;
+uint32_t MouseCursorBuffer[16 * 16];
+uint32_t MouseCursorBufferAfter[16 * 16];
+Point CursorPosition;
+
 void InitGfx(struct limine_framebuffer* fb) {
     main_fb = fb;
 }
@@ -57,8 +62,8 @@ void FontPutStr(const char* s, uint64_t x, uint64_t y, uint32_t clr) {
     uint64_t xoff = x;
     uint64_t yoff = y;
 
-    uint64_t screenWidthChars = main_fb->width / 8;
-    uint64_t screenHeightChars = main_fb->height / 16;
+    uint64_t screenwidthChars = main_fb->width / 8;
+    uint64_t screenheightChars = main_fb->height / 16;
 
     while (*s) {
         char c = *s;
@@ -237,4 +242,53 @@ int DisplayGraphyx1(void* ptr, uint64_t size, uint64_t xpos, uint64_t ypos) {
     }
 
     return 0;
+}
+
+void ClearMouseCursor(uint8_t* MouseCursor, Point Position) {
+    if (!MouseDrawn) return;
+
+    int XMax = 16;
+    int YMax = 16;
+    int DifferenceX = GetFb()->width - Position.X;
+    int DifferenceY = GetFb()->height - Position.Y;
+
+    if (DifferenceX < 16) XMax = DifferenceX;
+    if (DifferenceY < 16) YMax = DifferenceY;
+
+    for (int Y = 0; Y < YMax; Y++) {
+        for (int X = 0; X < XMax; X++) {
+            int Bit = Y * 16 + X;
+            int Byte = Bit / 8;
+            if ((MouseCursor[Byte] & (0b10000000 >> (X % 8)))) {
+                if (GetPx(Position.X + X, Position.Y + Y) == MouseCursorBufferAfter[X + Y *16]) {
+                    PutPx(Position.X + X, Position.Y + Y, MouseCursorBuffer[X + Y * 16]);
+                }
+            }
+        }
+    }
+}
+
+void DrawOverlayMouseCursor(uint8_t* MouseCursor, Point Position, uint32_t Colour) {
+    int XMax = 16;
+    int YMax = 16;
+    int DifferenceX = GetFb()->width - Position.X;
+    int DifferenceY = GetFb()->height - Position.Y;
+
+    if (DifferenceX < 16) XMax = DifferenceX;
+    if (DifferenceY < 16) YMax = DifferenceY;
+
+    for (int Y = 0; Y < YMax; Y++) {
+        for (int X = 0; X < XMax; X++) {
+            int Bit = Y * 16 + X;
+            int __Byte = Bit / 8;
+            if ((MouseCursor[__Byte] & (0b10000000 >> (X % 8)))) {
+                MouseCursorBuffer[X + Y * 16] = GetPx(Position.X + X, Position.Y + Y);
+                PutPx(Position.X + X, Position.Y + Y, Colour);
+                MouseCursorBufferAfter[X + Y * 16] = GetPx(Position.X + X, Position.Y + Y);
+
+            }
+        }
+    }
+
+    MouseDrawn = true;
 }
