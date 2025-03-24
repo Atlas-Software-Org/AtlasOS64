@@ -17,6 +17,7 @@
 #include <InterruptDescriptors/Drivers/PIT/Scheduler/Sched.h>
 #include <InterruptDescriptors/Drivers/KeyboardDev/KbdDev.h>
 #include <InterruptDescriptors/Drivers/MouseDev/MouseDev.h>
+#include <RD/RamDisk.h>
 
 #include <InterruptDescriptors/Syscall.h>
 
@@ -184,26 +185,7 @@ void kmain(void) {
     InitPS2Mouse();
     InitPitTimer();
 
-    e9debugkf("Testing threading\n\r");
-    Thread* thrd1 = (Thread*)page_alloc();
-    Thread* thrd2 = (Thread*)page_alloc();
-    Thread* thrd3 = (Thread*)page_alloc();
-    Thread* thrd4 = (Thread*)page_alloc();
-    Thread* thrd5 = (Thread*)page_alloc();
-    
-    e9debugkf("Initalizing Threads\n\r");
-    thrd1->Handler = Test1;
-    thrd2->Handler = Test2;
-    thrd3->Handler = Test3;
-    thrd4->Handler = Test4;
-    thrd5->Handler = Test5;
-
-    e9debugkf("Creating threads\n\r");
-    int result = CreateThread(thrd1);
-    result = CreateThread(thrd2);
-    result = CreateThread(thrd3);
-    result = CreateThread(thrd4);
-    result = CreateThread(thrd5);
+    LoadRamDiskImg(initrd->address, initrd->size);
 
     while (1) {
         ProcessMousePacket();

@@ -31,6 +31,7 @@
 
 #include <HtKernelUtils/debug.h>
 #include <gpx1.h>
+#include <RD/RamDisk.h>
 __attribute__((interrupt)) void SyscallInt_Hndlr(struct InterruptFrame* Frame) {
     x64Regs __proc_regs;
     x64ReadRegs(&__proc_regs);
