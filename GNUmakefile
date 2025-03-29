@@ -6,7 +6,7 @@ MAKEFLAGS += -rR
 ARCH := x86_64
 
 # Default user QEMU flags. These are appended to the QEMU command calls.
-QEMUFLAGS := -m 2G -debugcon stdio
+QEMUFLAGS := -m 2G -debugcon stdio -netdev user,id=net0 -device e1000,netdev=net0
 
 override IMAGE_NAME := atlas_os-$(ARCH)
 
@@ -254,3 +254,6 @@ clean:
 distclean:
 	$(MAKE) -C kernel distclean
 	rm -rf iso_root *.iso *.hdd kernel-deps limine ovmf
+
+intsall:
+	sudo dd if=$(IMAGE_NAME).iso of=/dev/sdb1

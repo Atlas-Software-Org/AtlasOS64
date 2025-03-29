@@ -26,8 +26,12 @@ char error_codes[20][128] = {
 };
 
 void exception_handler(int exception) {
-    DrawRect(0, 0, GetFb()->width, GetFb()->height, 0xFF1E1E1E);
-    FontPutStr(":( An error just occured. Halting...", 5, 5, 0xFFFF2222);
+    DrawRect(0, 0, GetFb()->width, GetFb()->height, 0xFF357EC7);
+    FontPutStr(":( An error just occured. Halting...", 6, 6, 0xFF000000);
+    FontPutStr(":( An error just occured. Halting...", 4, 4, 0xFF000000);
+    FontPutStr(":( An error just occured. Halting...", 4, 6, 0xFF000000);
+    FontPutStr(":( An error just occured. Halting...", 6, 4, 0xFF000000);
+    FontPutStr(":( An error just occured. Halting...", 5, 5, 0xFFFFFFFF);
     switch (exception) {
         case 0:
             FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);

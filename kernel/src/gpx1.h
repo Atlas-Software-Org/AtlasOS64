@@ -94,6 +94,15 @@ typedef struct {
 extern PSF1_FONT* main_psf1_font;
 extern uint32_t ClearColor;
 
+typedef struct {
+    uint64_t x, y, width, height;
+    uint32_t pixels[];  // Dynamic array to store original pixel colors
+} RectBuffer;
+
+extern Point SelectionBoxStart;
+extern Point SelectionBoxEnd;
+extern bool IsRightBtnPressed;
+
 void InitGfx(struct limine_framebuffer* fb);
 struct limine_framebuffer *GetFb();
 void PutPx(uint64_t x, uint64_t y, uint32_t clr);
@@ -101,7 +110,16 @@ void AddrPutPx(volatile uint32_t* addr, uint64_t x, uint64_t y, uint32_t clr);
 uint32_t GetPx(uint64_t x, uint64_t y);
 uint32_t AddrGetPx(volatile uint32_t* addr, uint64_t x, uint64_t y);
 void DrawRect(uint64_t x, uint64_t y, uint64_t width, uint64_t len, uint32_t clr);
+void DrawRectOutline(uint64_t x, uint64_t y, uint64_t width, uint64_t height, uint32_t clr);
+void DrawRectOutlineDotted(uint64_t x, uint64_t y, uint64_t width, uint64_t height, uint32_t clr);
+void DeleteRectOutlineDotted(void);
+void SaveRectToBuffer(uint64_t x, uint64_t y, uint64_t width, uint64_t height);
+void RestoreRectFromBuffer(uint64_t x, uint64_t y, uint64_t width, uint64_t height);
+void DrawSelectionMarkers();
+void DrawSelectionBox(uint64_t x, uint64_t y, uint64_t width, uint64_t height);
 
+void FontPutAtesChar(char c, uint64_t x, uint64_t y);
+void FontPutAtesStr(const char* s, uint64_t x, uint64_t y);
 void FontPutChar(char c, uint64_t x, uint64_t y, uint32_t clr);
 void FontPutStr(const char* s, uint64_t x, uint64_t y, uint32_t clr);
 
@@ -120,3 +138,5 @@ void Repaint(Window* window_ctx);
 
 void ClearMouseCursor(uint8_t* MouseCursor, Point Position);
 void DrawOverlayMouseCursor(uint8_t* MouseCursor, Point Position, uint32_t Colour);
+
+void ClearScreenColor(uint32_t color);

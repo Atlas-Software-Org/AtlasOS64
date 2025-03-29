@@ -37,7 +37,7 @@ __attribute__((interrupt)) void SyscallInt_Hndlr(struct InterruptFrame* Frame) {
     x64ReadRegs(&__proc_regs);
     x64Regs* regs = &__proc_regs;
 
-    switch (regs->rdi) { // Syscall number
+    switch (regs->rax) { // Syscall number
         case IOFSOpen:
             // Syscall for opening a file
             break;
@@ -87,7 +87,6 @@ __attribute__((interrupt)) void SyscallInt_Hndlr(struct InterruptFrame* Frame) {
             break;
 
         case IOConWrite:
-            // Syscall for writing to the console
             break;
 
         case IOConRead:

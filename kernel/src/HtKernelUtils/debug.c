@@ -107,3 +107,51 @@ void e9debugkf(const char* fmt, ...) {
 
     e9debugk(buffer);  // Send formatted string to your debug function
 }
+
+int dbgXIdx = 0;
+int dbgYIdx = 16;
+void debugkf(const char* fmt, ...) {
+    char buffer[256];
+    int buf_index = 0;
+    
+    va_list args;
+    va_start(args, fmt);
+
+    for (int i = 0; fmt[i] != '\0' && buf_index < sizeof(buffer) - 1; i++) {
+        if (fmt[i] == '%' && fmt[i + 1] != '\0') {
+            i++;
+
+            if (fmt[i] == 'd') {  // Integer
+                int num = va_arg(args, int);
+                buf_index += int_to_str(num, &buffer[buf_index]);
+            } 
+            else if (fmt[i] == 'x') {  // Hexadecimal
+                uint64_t num = va_arg(args, uint64_t);
+                buf_index += hex_to_str(num, &buffer[buf_index]);
+            }
+            else if (fmt[i] == 'p') {  // Pointer (Hex)
+                uintptr_t ptr = va_arg(args, uintptr_t);
+                buffer[buf_index++] = '0';
+                buffer[buf_index++] = 'x';
+                buf_index += hex_to_str(ptr, &buffer[buf_index]);
+            }
+            else if (fmt[i] == 's') {  // String
+                const char* str = va_arg(args, const char*);
+                while (*str && buf_index < sizeof(buffer) - 1) {
+                    buffer[buf_index++] = *str++;
+                }
+            } 
+            else {  // Unsupported format, print as-is
+                buffer[buf_index++] = '%';
+                buffer[buf_index++] = fmt[i];
+            }
+        } else {
+            buffer[buf_index++] = fmt[i];
+        }
+    }
+
+    buffer[buf_index] = '\0';  // Null-terminate the string
+    va_end(args);
+    FontPutStr(buffer, dbgXIdx, dbgYIdx, 0xFFFFFFFF);  // Send formatted string to your debug function
+    dbgYIdx+=16;
+}

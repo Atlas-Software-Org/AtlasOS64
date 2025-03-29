@@ -44,6 +44,201 @@ void DrawRect(uint64_t x, uint64_t y, uint64_t width, uint64_t len, uint32_t clr
     }
 }
 
+void DrawRectOutline(uint64_t x, uint64_t y, uint64_t width, uint64_t height, uint32_t clr) {
+    uint64_t startX = (x < x + width) ? x : x + width;
+    uint64_t endX = (x < x + width) ? x + width : x;
+
+    uint64_t startY = (y < y + height) ? y : y + height;
+    uint64_t endY = (y < y + height) ? y + height : y;
+
+    for (uint64_t i = startX; i < endX; i++) {
+        PutPx(i, startY, clr);
+        PutPx(i, endY - 1, clr);
+    }
+
+    for (uint64_t i = startY; i < endY; i++) {
+        PutPx(startX, i, clr);
+        PutPx(endX - 1, i, clr);
+    }
+}
+
+#define MAX_RECT_SIZE 1024
+
+static uint32_t SelectionRectBuffer[MAX_RECT_SIZE * MAX_RECT_SIZE];
+bool IsRightBtnPressed = false;
+
+Point SelectionBoxStart = {0, 0};
+Point SelectionBoxEnd = {0, 0};
+
+void DrawSelectionMarkers() {
+    PutPx(SelectionBoxStart.X, SelectionBoxStart.Y, 0xFF0000);  // Red color
+    PutPx(SelectionBoxEnd.X, SelectionBoxEnd.Y, 0x00FF00);  // Green color
+}
+
+void DrawSelectionBox(uint64_t x, uint64_t y, uint64_t width, uint64_t height) {
+    DrawRectOutlineDotted(x, y, width, height, 0xFFFFFFFF);  // White color
+}
+
+void SaveRectToBuffer(uint64_t x, uint64_t y, uint64_t width, uint64_t height) {
+    if (width > MAX_RECT_SIZE || height > MAX_RECT_SIZE) {
+        return;
+    }
+
+    for (uint64_t i = 0; i < height; i++) {
+        for (uint64_t j = 0; j < width; j++) {
+            SelectionRectBuffer[i * width + j] = GetPx(x + j, y + i);
+        }
+    }
+}
+
+void RestoreRectFromBuffer(uint64_t x, uint64_t y, uint64_t width, uint64_t height) {
+    if (width > MAX_RECT_SIZE || height > MAX_RECT_SIZE) {
+        return;
+    }
+
+    for (uint64_t i = 0; i < height; i++) {
+        for (uint64_t j = 0; j < width; j++) {
+            PutPx(x + j, y + i, SelectionRectBuffer[i * width + j]);
+        }
+    }
+}
+
+void DrawRectOutlineDotted(uint64_t x, uint64_t y, uint64_t width, uint64_t height, uint32_t clr) {
+    for (uint64_t i = x; i < x + width; i += 2) {
+        PutPx(i, y, clr);
+        PutPx(i, y + height - 1, clr);
+    }
+    for (uint64_t i = y; i < y + height; i += 2) {
+        PutPx(x, i, clr);
+        PutPx(x + width - 1, i, clr);
+    }
+}
+
+void DeleteRectOutlineDotted(void) {
+    RestoreRectFromBuffer(SelectionBoxStart.X, SelectionBoxStart.Y,
+                          (SelectionBoxEnd.X > SelectionBoxStart.X) ? SelectionBoxEnd.X - SelectionBoxStart.X : SelectionBoxStart.X - SelectionBoxEnd.X,
+                          (SelectionBoxEnd.Y > SelectionBoxStart.Y) ? SelectionBoxEnd.Y - SelectionBoxStart.Y : SelectionBoxStart.Y - SelectionBoxEnd.Y);
+}
+
+int gpx1_ascii_to_int(char c) {
+    if (c >= '0' && c <= '9') {
+        return c - '0';
+    } else {
+        return -1; // Invalid digit
+    }
+}
+
+char gpx1_int_to_ascii(int num) {
+    if (num >= 0 && num <= 9) {
+        return '0' + num;
+    } else {
+        return '\0';
+    }
+}
+
+typedef enum {
+    ATES_COLOR_RESET = 0xE4E4E4,        // 0: Reset (Slight-Dark White)
+    ATES_COLOR_RED = 0xFF0000,          // 1: Red
+    ATES_COLOR_GREEN = 0x00FF00,        // 2: Green
+    ATES_COLOR_BLUE = 0x0000FF,         // 3: Blue
+    ATES_COLOR_WHITE = 0xFFFFFF,        // 4: White
+    ATES_COLOR_BLACK = 0x000000,        // 5: Black
+    ATES_COLOR_BRIGHT_RED = 0xFF6666,   // 6: Bright Red
+    ATES_COLOR_BRIGHT_GREEN = 0x66FF66, // 7: Bright Green
+    ATES_COLOR_BRIGHT_BLUE = 0x6666FF,  // 8: Bright Blue
+    ATES_COLOR_GRAY = 0x808080,         // 9: Gray
+} AtesColorValues24;
+
+uint32_t AtesColor = ATES_COLOR_RESET; // Default color
+
+AtesColorValues24 ParseAtes(int code) {
+    switch (code) {
+        case 0: return ATES_COLOR_RESET;
+        case 1: return ATES_COLOR_RED;
+        case 2: return ATES_COLOR_GREEN;
+        case 3: return ATES_COLOR_BLUE;
+        case 4: return ATES_COLOR_WHITE;
+        case 5: return ATES_COLOR_BLACK;
+        case 6: return ATES_COLOR_BRIGHT_RED;
+        case 7: return ATES_COLOR_BRIGHT_GREEN;
+        case 8: return ATES_COLOR_BRIGHT_BLUE;
+        case 9: return ATES_COLOR_GRAY;
+        default: return ATES_COLOR_RESET;  // Default to reset if invalid
+    }
+}
+
+void FontPutAtesChar(char c, uint64_t x, uint64_t y) {
+    uint8_t* fontPtr = (uint8_t*)main_psf1_font->glyphBuffer + (c * main_psf1_font->psf1_Header->charsize);
+
+    for (uint64_t row = 0; row < main_psf1_font->psf1_Header->charsize; row++) {
+        uint8_t pixelData = fontPtr[row];
+
+        for (uint64_t col = 0; col < 8; col++) {
+            if ((pixelData >> (7 - col)) & 1) {
+                PutPx(x + col, y + row, AtesColor); // Use current color
+            }
+        }
+    }
+}
+
+void FontPutAtesStr(const char* s, uint64_t x, uint64_t y) {
+    uint64_t xoff = x;
+    uint64_t yoff = y;
+
+    while (*s) {
+        char c = *s;
+
+        if (c == '\b') { // Backspace
+            if (xoff > x) {
+                xoff -= 8;
+            }
+            DrawRect(xoff, yoff, 8, 16, ClearColor);
+        } 
+        else if (c == '\n') { // Newline
+            xoff = x;
+            yoff += 16;
+        } 
+        else if (c == '\r') { // Carriage Return
+            xoff = x;
+        } 
+        else if (c == '\xAB') { // ATES Sequence Detected
+            s++;
+            c = *s;
+            if (c == '[') {
+                s++;
+                c = *s;
+                if (c >= '0' && c <= '9') {
+                    int code = c - '0';
+                    AtesColor = ParseAtes(code);
+                    s++;
+                    c = *s;
+                    if (c == ']') {
+                        s++;
+                        c = *s;
+                        if (c == ';') {
+                        } else {FontPutChar('(', xoff, yoff, AtesColor);xoff += 8;FontPutChar('n', xoff, yoff, AtesColor);xoff += 8;FontPutChar('u', xoff, yoff, AtesColor);xoff += 8;FontPutChar('l', xoff, yoff, AtesColor);xoff += 8;FontPutChar('l', xoff, yoff, AtesColor);xoff += 8;FontPutChar(')', xoff, yoff, AtesColor);return;}
+                    } else {FontPutChar('(', xoff, yoff, AtesColor);xoff += 8;FontPutChar('n', xoff, yoff, AtesColor);xoff += 8;FontPutChar('u', xoff, yoff, AtesColor);xoff += 8;FontPutChar('l', xoff, yoff, AtesColor);xoff += 8;FontPutChar('l', xoff, yoff, AtesColor);xoff += 8;FontPutChar(')', xoff, yoff, AtesColor);return;}
+                } else {FontPutChar('(', xoff, yoff, AtesColor);xoff += 8;FontPutChar('n', xoff, yoff, AtesColor);xoff += 8;FontPutChar('u', xoff, yoff, AtesColor);xoff += 8;FontPutChar('l', xoff, yoff, AtesColor);xoff += 8;FontPutChar('l', xoff, yoff, AtesColor);xoff += 8;FontPutChar(')', xoff, yoff, AtesColor);return;}
+            } else {FontPutChar('(', xoff, yoff, AtesColor);xoff += 8;FontPutChar('n', xoff, yoff, AtesColor);xoff += 8;FontPutChar('u', xoff, yoff, AtesColor);xoff += 8;FontPutChar('l', xoff, yoff, AtesColor);xoff += 8;FontPutChar('l', xoff, yoff, AtesColor);xoff += 8;FontPutChar(')', xoff, yoff, AtesColor);return;}
+        }
+        else { // Normal character
+            if (xoff + 8 > main_fb->width) { // Line wrap
+                xoff = x;
+                yoff += 16;
+            }
+
+            if (yoff + 16 > main_fb->height) { // Scroll if needed
+                break;
+            }
+
+            FontPutAtesChar(c, xoff, yoff); // Draw character with current color
+            xoff += 8;
+        }
+
+        s++;
+    }
+}
+
 void FontPutChar(char c, uint64_t x, uint64_t y, uint32_t clr) {
     uint8_t* fontPtr = (uint8_t*)main_psf1_font->glyphBuffer + (c * main_psf1_font->psf1_Header->charsize);
 
@@ -291,4 +486,8 @@ void DrawOverlayMouseCursor(uint8_t* MouseCursor, Point Position, uint32_t Colou
     }
 
     MouseDrawn = true;
+}
+
+void ClearScreenColor(uint32_t color) {
+    DrawRect(0, 0, GetFb()->width, GetFb()->height, color);
 }

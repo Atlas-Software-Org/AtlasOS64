@@ -31,9 +31,6 @@ void uSleep(uint64_t nanoseconds) {
 
 __attribute__((interrupt)) void PITInt_Hndlr(struct InterruptFrame* frame) {
     TimeTicks++;
-    if (TimeTicks % 100 == 0) {
-        Sched_Yield();
-    }
     outb(0x20, 0x20);
 }
 

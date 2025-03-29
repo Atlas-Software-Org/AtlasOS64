@@ -83,32 +83,32 @@ uint8_t MousePointer[] = {
     0b00000011, 0b00000000, 
 };
 
-void MouseWait(){
+void MouseWait() {
     uint64_t timeout = 100000;
-    while (timeout--){
-        if ((inb(0x64) & 0b10) == 0){
+    while (timeout--) {
+        if ((inb(0x64) & 0b10) == 0) {
             return;
         }
     }
 }
 
-void MouseWaitInput(){
+void MouseWaitInput() {
     uint64_t timeout = 100000;
-    while (timeout--){
-        if (inb(0x64) & 0b1){
+    while (timeout--) {
+        if (inb(0x64) & 0b1) {
             return;
         }
     }
 }
 
-void MouseWrite(uint8_t value){
+void MouseWrite(uint8_t value) {
     MouseWait();
     outb(0x64, 0xD4);
     MouseWait();
     outb(0x60, value);
 }
 
-uint8_t MouseRead(){
+uint8_t MouseRead() {
     MouseWaitInput();
     return inb(0x60);
 }
@@ -119,9 +119,8 @@ bool MousePacketReady = false;
 Point MousePosition;
 Point MousePositionOld;
 
-void HandlePS2Mouse(uint8_t data){
-
-    switch(MouseCycle){
+void HandlePS2Mouse(uint8_t data) {
+    switch(MouseCycle) {
         case 0:
             if (MousePacketReady) break;
             if ((data & 0b00001000) == 0) break;
@@ -142,51 +141,53 @@ void HandlePS2Mouse(uint8_t data){
     }
 }
 
-void ProcessMousePacket(){
+#include "../KeyboardDev/KbdDev.h"
+
+__attribute__((hot)) void ProcessMousePacket() {
     if (!MousePacketReady) return;
 
         bool xNegative, yNegative, xOverflow, yOverflow;
 
-        if (MousePacket[0] & PS2XSign){
+        if (MousePacket[0] & PS2XSign) {
             xNegative = true;
         }else xNegative = false;
 
-        if (MousePacket[0] & PS2YSign){
+        if (MousePacket[0] & PS2YSign) {
             yNegative = true;
         }else yNegative = false;
 
-        if (MousePacket[0] & PS2XOverflow){
+        if (MousePacket[0] & PS2XOverflow) {
             xOverflow = true;
         }else xOverflow = false;
 
-        if (MousePacket[0] & PS2YOverflow){
+        if (MousePacket[0] & PS2YOverflow) {
             yOverflow = true;
         }else yOverflow = false;
 
-        if (!xNegative){
+        if (!xNegative) {
             MousePosition.X += MousePacket[1];
-            if (xOverflow){
+            if (xOverflow) {
                 MousePosition.X += 255;
             }
         } else
         {
             MousePacket[1] = 256 - MousePacket[1];
             MousePosition.X -= MousePacket[1];
-            if (xOverflow){
+            if (xOverflow) {
                 MousePosition.X -= 255;
             }
         }
 
-        if (!yNegative){
+        if (!yNegative) {
             MousePosition.Y -= MousePacket[2];
-            if (yOverflow){
+            if (yOverflow) {
                 MousePosition.Y -= 255;
             }
         } else
         {
             MousePacket[2] = 256 - MousePacket[2];
             MousePosition.Y += MousePacket[2];
-            if (yOverflow){
+            if (yOverflow) {
                 MousePosition.Y += 255;
             }
         }
@@ -200,14 +201,33 @@ void ProcessMousePacket(){
         ClearMouseCursor(MousePointer, MousePositionOld);
         DrawOverlayMouseCursor(MousePointer, MousePosition, 0xffffffff);
 
-        if (MousePacket[0] & PS2Leftbutton){
+        if (MousePacket[0] & PS2Leftbutton) {
             CheckBtns(MousePosition.X, MousePosition.Y);
         }
-        if (MousePacket[0] & PS2Middlebutton){
-            // MID BTN PRESS
+        if (MousePacket[0] & PS2Middlebutton) {
         }
-        if (MousePacket[0] & PS2Rightbutton){
-            // RIGHT BTN PRESS
+        if (MousePacket[0] & PS2Rightbutton) {
+            if (!IsRightBtnPressed) {
+                IsRightBtnPressed = true;
+                SelectionBoxStart = MousePosition;
+                PutPx(SelectionBoxStart.X, SelectionBoxStart.Y, 0xFF00FF00);
+            }
+            SelectionBoxEnd = MousePosition;
+        } else {
+            if (IsRightBtnPressed) {
+                uint64_t width = (SelectionBoxEnd.X > SelectionBoxStart.X) ? (SelectionBoxEnd.X - SelectionBoxStart.X) : (SelectionBoxStart.X - SelectionBoxEnd.X);
+                uint64_t height = (SelectionBoxEnd.Y > SelectionBoxStart.Y) ? (SelectionBoxEnd.Y - SelectionBoxStart.Y) : (SelectionBoxStart.Y - SelectionBoxEnd.Y);
+    
+                if (width <= 1024 && height <= 1024) {
+                    DrawSelectionBox(SelectionBoxStart.X, SelectionBoxStart.Y, width, height);
+                }
+            }
+    
+            IsRightBtnPressed = false;
+            SelectionBoxStart.X = 0;
+            SelectionBoxStart.Y = 0;
+            SelectionBoxEnd.X = 0;
+            SelectionBoxEnd.Y = 0;
         }
 
         MousePacketReady = false;
