@@ -32,6 +32,8 @@
 #include <HtKernelUtils/debug.h>
 #include <gpx1.h>
 #include <RD/RamDisk.h>
+#include <TTY/AtsTty.h>
+#include <InterruptDescriptors/Drivers/KeyboardDev/KbdDev.h>
 __attribute__((interrupt)) void SyscallInt_Hndlr(struct InterruptFrame* Frame) {
     x64Regs __proc_regs;
     x64ReadRegs(&__proc_regs);
@@ -87,10 +89,30 @@ __attribute__((interrupt)) void SyscallInt_Hndlr(struct InterruptFrame* Frame) {
             break;
 
         case IOConWrite:
+            char* write_ptr_sys_write = (char*)regs->rsi;
+            size_t write_len_sys_write = (size_t)regs->rdx;
+            for (size_t i = 0; i < write_len_sys_write; i++) {
+                char c = write_ptr_sys_write[i];
+                if (c == 0x08 || c == 0x0A || c == 0x0D || (0x20 <= c && c <= 0x7E)) {
+                    tty_putchar(write_ptr_sys_write[i]);
+                }
+            }
             break;
 
         case IOConRead:
-            // Syscall for reading from the console
+            char* dst = (char*)regs->rsi;
+            size_t maxlen = (size_t)regs->rdx;
+
+            for (size_t i = 0; i < maxlen; i++) {
+                char c = (char)__keyboard_getc();
+                tty_putchar(c);
+                dst[i] = c;
+                if (c == '\n') {
+                    regs->rax = i + 1;
+                    break;
+                }
+            }
+
             break;
 
         case HTThreadSet:

@@ -3,6 +3,17 @@
         "debug.h": "c",
         "cstdlib": "c",
         "sstream": "c",
-        "regex": "c"
+        "regex": "c",
+        "pit.h": "c",
+        "cstdio": "c",
+        "stddef.h": "c",
+        "io.h": "c",
+        "functional": "c",
+        "rtl8139.h": "c",
+        "stdint.h": "c",
+        "rtl8139dev.h": "c",
+        "kbddev.h": "c",
+        "mousedev.h": "c",
+        "string.h": "c"
     }
 }

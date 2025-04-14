@@ -1,39 +1,26 @@
-#pragma once
+#ifndef PCI_H
+#define PCI_H
 
-#include <HtKernelUtils/io.h>
-#include <HtKernelUtils/debug.h>
 #include <stdint.h>
-#include <stdbool.h>
+#include <stddef.h>
+#include <HtKernelUtils/io.h>
 
-#define PCI_CONFIG_ADDR 0xCF8
-#define PCI_CONFIG_DATA 0xCFC
+uint16_t pciConfigReadWord(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset);
+uint16_t pci_read_word(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
+uint8_t pci_read_byte(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
+uint8_t pci_get_header_type(uint8_t bus, uint8_t device, uint8_t function);
+uint16_t pci_get_vendor_id(uint8_t bus, uint8_t device, uint8_t function);
+uint16_t pci_get_device_id(uint8_t bus, uint8_t device, uint8_t function);
+uint8_t pci_get_class(uint8_t bus, uint8_t device, uint8_t function);
+uint8_t pci_get_subclass(uint8_t bus, uint8_t device, uint8_t function);
+uint8_t pci_get_irq_line(uint8_t bus, uint8_t device, uint8_t function);
+uint8_t pci_get_secondary_bus(uint8_t bus, uint8_t device, uint8_t function);
+uint32_t pciConfigReadLong(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset);
 
-#define AHCI_CLASS_CODE     0x01 // Mass Storage Controller
-#define AHCI_SUBCLASS_CODE  0x06 // AHCI Controller
-#define AHCI_VENDOR_ID      0x8086 // Example: Intel Vendor ID
-#define AHCI_DEVICE_ID      0x1C03 // Example: AHCI Device ID (can vary)
+int pci_find_device(uint16_t vendor_id, uint16_t device_id, uint8_t* out_bus, uint8_t* out_device, uint8_t* out_function);
 
-typedef struct {
-    uint16_t vendor_id;
-    uint16_t device_id;
-    uint8_t bus;
-    uint8_t device;
-    uint8_t function;
-    uint8_t class_code;
-    uint8_t subclass_code;
-} PciDevice;
+volatile uint32_t *GetE1000MMIOBaseAddr(uint8_t bus, uint8_t device, uint8_t function);
 
-typedef struct {
-    uint32_t BAR0; // Base Address Register 0
-    uint32_t BAR1; // Base Address Register 1
-    uint32_t BAR2; // Base Address Register 2
-    uint32_t BAR3; // Base Address Register 3
-    uint32_t BAR4; // Base Address Register 4
-    uint32_t BAR5; // Base Address Register 5
-} PciBars;
+uint32_t pci_get_bar0(uint32_t bus, uint32_t device, uint32_t function);
 
-int PciFindAhci(PciDevice *device);
-void PciGetBars(PciDevice *device, PciBars *bars);
-void PciWriteConfigAddress(uint32_t address);
-uint32_t PciReadConfigData(void);
-uint32_t PciReadConfig(uint32_t config_address);
+#endif

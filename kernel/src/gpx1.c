@@ -136,19 +136,6 @@ char gpx1_int_to_ascii(int num) {
     }
 }
 
-typedef enum {
-    ATES_COLOR_RESET = 0xE4E4E4,        // 0: Reset (Slight-Dark White)
-    ATES_COLOR_RED = 0xFF0000,          // 1: Red
-    ATES_COLOR_GREEN = 0x00FF00,        // 2: Green
-    ATES_COLOR_BLUE = 0x0000FF,         // 3: Blue
-    ATES_COLOR_WHITE = 0xFFFFFF,        // 4: White
-    ATES_COLOR_BLACK = 0x000000,        // 5: Black
-    ATES_COLOR_BRIGHT_RED = 0xFF6666,   // 6: Bright Red
-    ATES_COLOR_BRIGHT_GREEN = 0x66FF66, // 7: Bright Green
-    ATES_COLOR_BRIGHT_BLUE = 0x6666FF,  // 8: Bright Blue
-    ATES_COLOR_GRAY = 0x808080,         // 9: Gray
-} AtesColorValues24;
-
 uint32_t AtesColor = ATES_COLOR_RESET; // Default color
 
 AtesColorValues24 ParseAtes(int code) {
@@ -490,4 +477,73 @@ void DrawOverlayMouseCursor(uint8_t* MouseCursor, Point Position, uint32_t Colou
 
 void ClearScreenColor(uint32_t color) {
     DrawRect(0, 0, GetFb()->width, GetFb()->height, color);
+}
+
+#define BMP_FILE_HEADER_SIZE 14
+#define BMP_INFO_HEADER_SIZE 40
+
+typedef struct {
+    uint16_t bfType;
+    uint32_t bfSize;
+    uint16_t bfReserved1;
+    uint16_t bfReserved2;
+    uint32_t bfOffBits;
+} BMPFileHeader;
+
+typedef struct {
+    uint32_t biSize;
+    int32_t biWidth;
+    int32_t biHeight;
+    uint16_t biPlanes;
+    uint16_t biBitCount;
+    uint32_t biCompression;
+    uint32_t biSizeImage;
+    int32_t biXPelsPerMeter;
+    int32_t biYPelsPerMeter;
+    uint32_t biClrUsed;
+    uint32_t biClrImportant;
+} BMPInfoHeader;
+
+void DrawBmp(void* ptr, uint64_t size, int xoff, int yoff) {
+    // Cast pointer to byte (uint8_t*) for easier access
+    uint8_t* imgData = (uint8_t*)ptr;
+    
+    // Check if the size is sufficient to include a header and pixel data
+    if (size < 54) {
+        return;
+    }
+
+    // Retrieve the width and height of the image from the header (assuming 24-bit BMP)
+    int width = *(int*)&imgData[18];  // Width starts at byte 18
+    int height = *(int*)&imgData[22]; // Height starts at byte 22
+
+    // Offset where pixel data begins
+    int dataOffset = *(int*)&imgData[10];
+
+    // Ensure we're drawing within the bounds of the screen
+    int endX = xoff + width;
+    int endY = yoff + height;
+
+    // Iterate over each pixel and use PutPx to draw it, but reverse the y-axis
+    for (int y = 0; y < height; y++) {
+        // In BMP, the rows are stored from bottom to top, so we reverse the y-axis here
+        int row = height - 1 - y; // Flip the row index for top-to-bottom drawing
+
+        for (int x = 0; x < width; x++) {
+            // Get the pixel data (BMP is usually stored in BGR format)
+            int pixelOffset = dataOffset + (row * width + x) * 3;
+            uint8_t blue = imgData[pixelOffset];
+            uint8_t green = imgData[pixelOffset + 1];
+            uint8_t red = imgData[pixelOffset + 2];
+
+            // Check for a valid screen area to draw
+            if ((x + xoff) < 0 || (x + xoff) >= GetFb()->width || (y + yoff) < 0 || (y + yoff) >= GetFb()->height) {
+                continue;  // Skip drawing if outside screen bounds
+            }
+
+            // Combine RGB into a single color value and draw it
+            uint32_t color = (red << 16) | (green << 8) | blue;
+            PutPx(x + xoff, y + yoff, color);
+        }
+    }
 }

@@ -32,7 +32,7 @@ void HandlePS2Mouse(uint8_t data);
 void ProcessMousePacket();
 void InitPS2Mouse();
 
-Button_t CreateButton(const char* label, void (*Handler)(), uint64_t x, uint64_t y, uint64_t sx, uint64_t sy);
+Button_t *CreateButton(const char* label, void (*Handler)(), uint64_t x, uint64_t y, uint64_t sx, uint64_t sy);
 void RemoveButton(int btn_index);
 void CheckBtns(uint64_t x, uint64_t y);
 void SetBtnEnabled(Button_t btn);

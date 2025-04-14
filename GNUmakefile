@@ -6,7 +6,7 @@ MAKEFLAGS += -rR
 ARCH := x86_64
 
 # Default user QEMU flags. These are appended to the QEMU command calls.
-QEMUFLAGS := -m 2G -debugcon stdio -netdev user,id=net0 -device e1000,netdev=net0
+QEMUFLAGS := -m 4G -debugcon stdio -netdev user,id=net0 -device rtl8139,netdev=net0
 
 override IMAGE_NAME := atlas_os-$(ARCH)
 
@@ -174,6 +174,7 @@ $(IMAGE_NAME).iso: limine/limine kernel
 	mkdir -p iso_root/boot/sys64/fonts
 	cp -v kernel/a_depends/zap-light16.psf iso_root/boot/sys64/fonts/zap-light16.psf
 	cp -v kernel/a_depends/kern64.config iso_root/boot/sys64/kern64.config
+	cp -v kernel/a_depends/AtlasOS256.bmp iso_root/boot/sys64/AtlasOS256.bmp
 	mkdir -p iso_root/boot/limine
 	cp -v limine.conf iso_root/boot/limine/
 	mkdir -p iso_root/EFI/BOOT
@@ -181,7 +182,7 @@ ifeq ($(ARCH),x86_64)
 	cp -v limine/limine-bios.sys limine/limine-bios-cd.bin limine/limine-uefi-cd.bin iso_root/boot/limine/
 	cp -v limine/BOOTX64.EFI iso_root/EFI/BOOT/
 	cp -v limine/BOOTIA32.EFI iso_root/EFI/BOOT/
-	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
+	xorriso -volid "AtlasOS Live media" -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
 		-no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
 		-apm-block-size 2048 --efi-boot boot/limine/limine-uefi-cd.bin \
 		-efi-boot-part --efi-boot-image --protective-msdos-label \

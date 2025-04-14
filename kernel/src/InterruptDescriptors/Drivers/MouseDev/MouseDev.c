@@ -13,9 +13,9 @@ Button_t BTN_NULL = {
     .Enabled = 0
 };
 
-Button_t CreateButton(const char* label, void (*Handler)(), uint64_t x, uint64_t y, uint64_t sx, uint64_t sy) {
+Button_t *CreateButton(const char* label, void (*Handler)(), uint64_t x, uint64_t y, uint64_t sx, uint64_t sy) {
     if (last_btn >= 4096) {
-        return BTN_NULL; // No more space for buttons
+        return &BTN_NULL; // No more space for buttons
     }
     //Buttons[last_btn].label = label;
     Buttons[last_btn].Handler = Handler;
@@ -24,7 +24,7 @@ Button_t CreateButton(const char* label, void (*Handler)(), uint64_t x, uint64_t
     Buttons[last_btn].Scale.X = sx;
     Buttons[last_btn].Scale.Y = sy;
     Buttons[last_btn].Enabled = 0;
-    return Buttons[last_btn++];
+    return &Buttons[last_btn++];
 }
 
 void RemoveButton(int btn_index) {
@@ -139,6 +139,8 @@ void HandlePS2Mouse(uint8_t data) {
             MouseCycle = 0;
             break;
     }
+
+    ProcessMousePacket();
 }
 
 #include "../KeyboardDev/KbdDev.h"
@@ -205,29 +207,10 @@ __attribute__((hot)) void ProcessMousePacket() {
             CheckBtns(MousePosition.X, MousePosition.Y);
         }
         if (MousePacket[0] & PS2Middlebutton) {
+
         }
         if (MousePacket[0] & PS2Rightbutton) {
-            if (!IsRightBtnPressed) {
-                IsRightBtnPressed = true;
-                SelectionBoxStart = MousePosition;
-                PutPx(SelectionBoxStart.X, SelectionBoxStart.Y, 0xFF00FF00);
-            }
-            SelectionBoxEnd = MousePosition;
-        } else {
-            if (IsRightBtnPressed) {
-                uint64_t width = (SelectionBoxEnd.X > SelectionBoxStart.X) ? (SelectionBoxEnd.X - SelectionBoxStart.X) : (SelectionBoxStart.X - SelectionBoxEnd.X);
-                uint64_t height = (SelectionBoxEnd.Y > SelectionBoxStart.Y) ? (SelectionBoxEnd.Y - SelectionBoxStart.Y) : (SelectionBoxStart.Y - SelectionBoxEnd.Y);
-    
-                if (width <= 1024 && height <= 1024) {
-                    DrawSelectionBox(SelectionBoxStart.X, SelectionBoxStart.Y, width, height);
-                }
-            }
-    
-            IsRightBtnPressed = false;
-            SelectionBoxStart.X = 0;
-            SelectionBoxStart.Y = 0;
-            SelectionBoxEnd.X = 0;
-            SelectionBoxEnd.Y = 0;
+
         }
 
         MousePacketReady = false;

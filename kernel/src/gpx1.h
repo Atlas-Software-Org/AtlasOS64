@@ -118,6 +118,21 @@ void RestoreRectFromBuffer(uint64_t x, uint64_t y, uint64_t width, uint64_t heig
 void DrawSelectionMarkers();
 void DrawSelectionBox(uint64_t x, uint64_t y, uint64_t width, uint64_t height);
 
+typedef enum {
+    ATES_COLOR_RESET = 0xE4E4E4,        // 0: Reset (Slight-Dark White)
+    ATES_COLOR_RED = 0xFF0000,          // 1: Red
+    ATES_COLOR_GREEN = 0x00FF00,        // 2: Green
+    ATES_COLOR_BLUE = 0x0000FF,         // 3: Blue
+    ATES_COLOR_WHITE = 0xFFFFFF,        // 4: White
+    ATES_COLOR_BLACK = 0x000000,        // 5: Black
+    ATES_COLOR_BRIGHT_RED = 0xFF6666,   // 6: Bright Red
+    ATES_COLOR_BRIGHT_GREEN = 0x66FF66, // 7: Bright Green
+    ATES_COLOR_BRIGHT_BLUE = 0x6666FF,  // 8: Bright Blue
+    ATES_COLOR_GRAY = 0x808080,         // 9: Gray
+} AtesColorValues24;
+
+AtesColorValues24 ParseAtes(int code);
+
 void FontPutAtesChar(char c, uint64_t x, uint64_t y);
 void FontPutAtesStr(const char* s, uint64_t x, uint64_t y);
 void FontPutChar(char c, uint64_t x, uint64_t y, uint32_t clr);
@@ -140,3 +155,5 @@ void ClearMouseCursor(uint8_t* MouseCursor, Point Position);
 void DrawOverlayMouseCursor(uint8_t* MouseCursor, Point Position, uint32_t Colour);
 
 void ClearScreenColor(uint32_t color);
+
+void DrawBmp(void* ptr, uint64_t size, int xoff, int yoff);

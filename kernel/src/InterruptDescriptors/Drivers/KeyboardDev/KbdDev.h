@@ -7,14 +7,11 @@
 #include <stddef.h>
 #include <gpx1.h>
 #include <IDT/idt.h>
+#include <TTY/AtsTty.h>
 
 struct InterruptFrame;
 __attribute__((interrupt)) void KeyboardInt_Hndlr(struct InterruptFrame* frame);
 
-extern const uint64_t KbdXIdxStart;
-extern const uint64_t KbdYIdxStart;
 
-extern uint64_t KbdXIdx;
-extern uint64_t KbdYIdx;
-
-void InitKbd();
+int __keyboard_getc();
+int __keyboard_gets(char *out, int maxlen);

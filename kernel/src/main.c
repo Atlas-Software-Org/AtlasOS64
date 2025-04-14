@@ -9,16 +9,26 @@
 #include <gpx1.h>
 #include <paging/paging.h>
 
+#include <TTY/printf/printf.h>
+
 #include <GDT/gdt.h>
 #include <IDT/idt.h>
 #include <PCI/PCI.h>
 
-// Drivers
+// Interrupt Drivers
 #include <InterruptDescriptors/Drivers/PIT/PIT.h>
 #include <InterruptDescriptors/Drivers/PIT/Scheduler/Sched.h>
 #include <InterruptDescriptors/Drivers/KeyboardDev/KbdDev.h>
 #include <InterruptDescriptors/Drivers/MouseDev/MouseDev.h>
+#include <InterruptDescriptors/Drivers/Net/RTL8139/RTL8139Dev.h>
+
+// Misc Drivers
+
 #include <RD/RamDisk.h>
+#include <TTY/AtsTty.h>
+
+// PCI Drivers
+#include <PCI/Drivers/RTL8139/rtl8139.h>
 
 #include <InterruptDescriptors/Syscall.h>
 
@@ -55,7 +65,7 @@ static void hcf(void) {
 }
 #pragma endregion
 
-extern char* PWD;
+int EnabledNet = 0;
 
 void kmain(void) {
 #pragma region Step1K
@@ -80,9 +90,13 @@ void kmain(void) {
     struct limine_file *initrd = module_request.response->modules[0];   // INITRD
     struct limine_file *fontFile = module_request.response->modules[1]; // ZAP LIGHT 16 FONT
     struct limine_file *osCfg = module_request.response->modules[2];    // OS CFG
+    struct limine_file *AtlasOS256_LoadImg = module_request.response->modules[3]; // AtlasOS256.bmp - Startup logo
     if (((uint8_t *)osCfg->address)[0] == '0')
     {
         e9 = 0x80;
+    }
+    if (((uint8_t *)osCfg->address)[1] == '1') {
+        EnabledNet = 1;
     }
 
     PSF1_HEADER *fontHeader = (PSF1_HEADER *)fontFile->address;
@@ -115,6 +129,8 @@ void kmain(void) {
         main_psf1_font = finishedFont;
     }
 
+    DrawBmp(AtlasOS256_LoadImg->address, AtlasOS256_LoadImg->size, GetFb()->width/2-128, GetFb()->height/2-128);
+
 /*
     DrawRect(0, 0, GetFb()->width, GetFb()->height, 0xFF4C565E);
     uint64_t dash_width = GetFb()->width * 65 / 1920;
@@ -131,6 +147,28 @@ void kmain(void) {
     gdtDescriptor.Size = sizeof(GDT) - 1;
     gdtDescriptor.Offset = (uint64_t)&DefaultGDT;
     LoadGDT(&gdtDescriptor);
+
+    for (uint32_t i = 0; i < 5000; i++) {
+        asm volatile ("nop;nop;nop;nop;nop");
+    }
+
+    uint8_t bus, device, function, rtl8139_irq;
+    if (pci_find_device(0x10EC, 0x8139, &bus, &device, &function) && EnabledNet) {
+        rtl8139_irq = pci_get_irq_line(bus, device, function);
+        uint8_t mac[6];
+        rtl8139_get_mac(mac);
+    
+        printf(" [ RTL8139 ] MAC  Address: %x:%x:%x:%x:%x:%x\n\r", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        printf(" [ RTL8139 ] RTL8139 found at %d:%d:%d with IRQ %d\n\r", bus, device, function, rtl8139_irq);
+        
+        rtl8139_init(pci_get_bar0(bus, device, function), bus, device, function);
+    } else {
+        if (EnabledNet) {
+            printf(" [ RTL8139 ! ] RTL8139 not found\n\r");
+        } else {
+            printf(" [ RTL8139 ! ] User disabled networking\n\r");
+        }
+    }
 
     asm volatile("cli");
 
@@ -159,15 +197,28 @@ void kmain(void) {
     IRQ_clear_mask(0);
     IRQ_clear_mask(1);
     IRQ_clear_mask(2);
+    IRQ_clear_mask(rtl8139_irq);
     IRQ_clear_mask(12);
     
     InitPS2Mouse();
     InitPitTimer();
 
+    tty_init();
+
+    ClearScreenColor(0x000000);
+
     asm volatile("sti");
 
+    test_TCPIPWrapper();
+
     while (1) {
-        ProcessMousePacket();
+        break;
+        tty_puts("\e[7];user@atlas_os\e[0];:\e[8];~\e[0];$ ");
+        char buffer[1024];
+        int len = __keyboard_gets(buffer, 1024);
+
+        buffer[len] = 0;
+        printf("Command: %s\n\r", buffer);
     }
 
     hcf();
