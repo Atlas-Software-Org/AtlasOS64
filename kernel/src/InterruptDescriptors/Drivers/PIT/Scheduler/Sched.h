@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Regs.h>
-#include <paging/paging.h>
+#include <memory/paging.h>
 #include <mem/mem.h>
 #include <stddef.h>
 #include <stdint.h>

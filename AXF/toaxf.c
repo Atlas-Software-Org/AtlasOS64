@@ -55,8 +55,8 @@ void write_axf_header(FILE *out_file, uint64_t entry, uint64_t code_size, uint64
     header.AI_MAG[2] = 'F';
 
     // Set the header fields
-    header.AEntry = entry;
     header.AArch = 0x01;  // 64-bit architecture
+    header.AEntry = entry;
     header.AVersion = 0x01; // Version 1
     header.ATrgtOS = 0xFFFF; // AtlasOS64 target OS
     header.AAbi = 0xFF; // SYSV ABI

@@ -10,6 +10,9 @@ static volatile bool kbd_data_ready = false;
 bool IsShift = false;
 bool IsCaps = false;
 
+bool IsCtrl = false;
+bool IsAlt = false;
+
 char USLayoutNrml[128] = {
     '\e','`','1','2','3','4','5','6','7','8','9','0','-','=', '\b',
     '\t','q','w','e','r','t','y','u','i','o','p','[',']','\n', 0,
@@ -43,14 +46,18 @@ void kbd_buffer_push(char c) {
     kbd_head = next;
     kbd_data_ready = true;
     if ((0x20 <= c && c <= 0x7E) || c == '\e' || c == '\b' || c == '\n' || c == '\r') {
+        goto end;
         uint64_t cellx = getCellx();
         uint64_t celly = getCelly();
-        DrawRect(cellx*8, celly*16, 8, 16, 0x000000);
-        tty_putchar(c);
+        int xoff_tty_get = getXoffParam();
+        int yoff_tty_get = getYoffParam();
+        DrawRect((cellx+xoff_tty_get)*8, (celly+yoff_tty_get)*16, 8, 16, 0x000000);
+        tty_putchar_simple(c);
         cellx = getCellx();
         celly = getCelly();
-        DrawRect(cellx*8+1, celly*16+1, 2, 14, 0xFFFFFFFF);
+        DrawRect((cellx+xoff_tty_get)*8+1, (celly+yoff_tty_get)*16+1, 1, 14, 0xFFFFFFFF);
     }
+    end:
 }
 
 int kbd_buffer_pop(void) {
@@ -70,6 +77,7 @@ int __keyboard_getc(void) {
     while ((c = kbd_buffer_pop()) < 0) {
         __asm__ volatile("hlt");
     }
+    tty_putchar(c);
     return c;
 }
 
@@ -99,6 +107,8 @@ int __keyboard_gets(char *out, int maxlen) {
     return count;
 }
 
+extern int NotificationRecievedKbdInterrut;
+
 __attribute__((interrupt)) void KeyboardInt_Hndlr(struct InterruptFrame* Frame) {
     uint8_t scancode = inb(0x60);
     if (scancode & 0x80) {
@@ -125,6 +135,26 @@ __attribute__((interrupt)) void KeyboardInt_Hndlr(struct InterruptFrame* Frame) 
                 PIC_sendEOI(1);
                 IOWait();
                 return;
+            case 0x1D:
+                IsCtrl = true;
+                PIC_sendEOI(1);
+                IOWait();
+                break;
+            case 0x9D:
+                IsCtrl = false;
+                PIC_sendEOI(1);
+                IOWait();
+                break;
+            case 0x38:
+                IsAlt = true;
+                PIC_sendEOI(1);
+                IOWait();
+                break;
+            case 0xB8:
+                IsAlt = false;
+                PIC_sendEOI(1);
+                IOWait();
+                break;
             default:
                 break;
         }
@@ -141,9 +171,42 @@ __attribute__((interrupt)) void KeyboardInt_Hndlr(struct InterruptFrame* Frame) 
             ch = USLayoutNrml[scancode];
         }
         if (ch) {
+            NotificationRecievedKbdInterrut = 1;
             kbd_buffer_push(ch);
         }
     }
     PIC_sendEOI(1);
     IOWait();
 }
+
+bool IsAttrTrue(uint8_t attr) {
+    const uint8_t kbd_ctrl_attr_mask = 0b00000001;
+    const uint8_t kbd_shft_attr_mask = 0b00000010;
+    const uint8_t kbd_alt_attr_mask = 0b00000100;
+    const uint8_t kbd_caps_attr_mask = 0b00001000;
+
+    uint8_t _attr = attr;
+
+    if (_attr & kbd_ctrl_attr_mask) {
+        return IsCtrl;
+    }
+
+    if (_attr & kbd_shft_attr_mask) {
+        return IsShift;
+    }
+
+    if (_attr & kbd_alt_attr_mask) {
+        return IsAlt;
+    }
+
+    if (_attr & kbd_caps_attr_mask) {
+        return IsCaps;
+    }
+
+    return false;  // If no attribute matches, return false
+}
+
+bool IsCtrlSet() {return IsCtrl;}
+bool IsShiftSet() {return IsShift;}
+bool IsAltSet() {return IsAlt;}
+bool IsCapsSet() {return IsCaps;}

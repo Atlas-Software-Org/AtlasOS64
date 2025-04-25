@@ -92,3 +92,78 @@ uint32_t pci_get_bar0(uint32_t bus, uint32_t device, uint32_t function) {
     uint32_t bar0 = pciConfigReadLong(bus, device, function, 0x10);
     return bar0;
 }
+
+uint32_t pci_config_read_dword(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset) {
+    uint32_t address;
+    address = (uint32_t)(
+        ((uint32_t)1 << 31)             |
+        ((uint32_t)bus << 16)           |
+        ((uint32_t)device << 11)        |
+        ((uint32_t)function << 8)       |
+        (offset & 0xFC)
+    );
+
+    outl(0xCF8, address);
+    return inl(0xCFC);
+}
+
+int pci_find_device_class(uint8_t class_code, uint8_t subclass, pci_device_t* out) {
+    for (uint8_t bus = 0; bus < 256; bus++) {
+        for (uint8_t device = 0; device < 32; device++) {
+            for (uint8_t function = 0; function < 8; function++) {
+                uint32_t config = pci_config_read_dword(bus, device, function, 0x00); // Read Vendor ID and Device ID
+                uint16_t vendor_id = (uint16_t)(config & 0xFFFF);
+                uint16_t device_id = (uint16_t)((config >> 16) & 0xFFFF);
+                
+                // Skip if the device is not present
+                if (vendor_id == 0xFFFF) continue;
+
+                // Check class and subclass
+                config = pci_config_read_dword(bus, device, function, 0x08); // Read Class Code and Subclass
+                uint8_t pci_class = (uint8_t)(config >> 24);
+                uint8_t pci_subclass = (uint8_t)((config >> 16) & 0xFF);
+
+                if (pci_class == class_code && pci_subclass == subclass) {
+                    out->bus = bus;
+                    out->device = device;
+                    out->function = function;
+                    out->vendor_id = vendor_id;
+                    out->device_id = device_id;
+                    
+                    // Read ProgIF (byte 0x09)
+                    out->prog_if = (uint8_t)(pci_config_read_dword(bus, device, function, 0x09) & 0xFF);
+
+                    // Read the BARs (0x10 to 0x24)
+                    for (int i = 0; i < 6; i++) {
+                        out->bar[i] = pci_config_read_dword(bus, device, function, 0x10 + (i * 4));
+                    }
+                    return 1;  // Device found
+                }
+            }
+        }
+    }
+    return 0;  // Device not found
+}
+
+uint32_t pci_read_bar(void *baseAddress, uint8_t BAR) {
+    if (BAR > 5) {
+        // BAR can only be from 0 to 5
+        return 0;
+    }
+
+    // The BARs are located at offsets 0x10, 0x14, ..., 0x24 (4 bytes each)
+    uint32_t barOffset = 0x10 + (BAR * 4);
+    
+    // Read the BAR value at the given offset in the PCI config space
+    uint32_t barValue = *((volatile uint32_t *)(baseAddress + barOffset));
+
+    // If the BAR address is 32-bit, return the base value
+    if ((barValue & 0x1) == 0) {
+        return barValue;
+    }
+    // For 64-bit BARs, read the next 32 bits and combine them with the first 32 bits
+    else {
+        uint32_t highBarValue = *((volatile uint32_t *)(baseAddress + barOffset + 4));
+        return (highBarValue << 32) | (barValue & 0xFFFFFFF0);
+    }
+}

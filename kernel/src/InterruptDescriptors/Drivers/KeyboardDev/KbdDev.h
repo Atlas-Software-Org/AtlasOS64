@@ -15,3 +15,15 @@ __attribute__((interrupt)) void KeyboardInt_Hndlr(struct InterruptFrame* frame);
 
 int __keyboard_getc();
 int __keyboard_gets(char *out, int maxlen);
+
+#define KbdAttrCtrl     0b00000001
+#define KbdAttrShift    0b00000010
+#define KbdAttrAlt      0b00000100
+#define KbdAttrCaps     0b00001000
+
+bool IsAttrTrue(uint8_t attr);
+
+bool IsCtrlSet();
+bool IsShiftSet();
+bool IsAltSet();
+bool IsCapsSet();

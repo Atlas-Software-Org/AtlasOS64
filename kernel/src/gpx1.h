@@ -92,6 +92,7 @@ typedef struct {
 } __attribute__((packed)) gpx1_header_t; // Graphyx 1 image file format
 
 extern PSF1_FONT* main_psf1_font;
+extern PSF1_FONT* mainAr_psf1_font;
 extern uint32_t ClearColor;
 
 typedef struct {
@@ -137,6 +138,8 @@ void FontPutAtesChar(char c, uint64_t x, uint64_t y);
 void FontPutAtesStr(const char* s, uint64_t x, uint64_t y);
 void FontPutChar(char c, uint64_t x, uint64_t y, uint32_t clr);
 void FontPutStr(const char* s, uint64_t x, uint64_t y, uint32_t clr);
+void FontPutCharSize(char c, uint64_t x, uint64_t y, uint32_t clr, int size_multiplier);
+void FontPutStrSize(const char* s, uint64_t x, uint64_t y, uint32_t clr, int size_multiplier);
 
 unsigned int *tga_parse(unsigned char *ptr, int size);
 int DisplayTarga(void* ptr, uint64_t size, uint64_t xpos, uint64_t ypos);
@@ -157,3 +160,11 @@ void DrawOverlayMouseCursor(uint8_t* MouseCursor, Point Position, uint32_t Colou
 void ClearScreenColor(uint32_t color);
 
 void DrawBmp(void* ptr, uint64_t size, int xoff, int yoff);
+
+void DrawLine(int x0, int y0, int x1, int y1, uint32_t color);
+
+// Arabic
+
+void ArPuts(const char* _s, uint64_t x, uint64_t y, uint32_t clr);
+char* En2Ar(const char* _en_pron, void* out);
+char* UniAr2Ar(const char* _s, void* out);

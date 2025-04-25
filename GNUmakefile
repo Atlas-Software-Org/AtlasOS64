@@ -31,10 +31,11 @@ run-hdd: run-hdd-$(ARCH)
 
 .PHONY: run-x86_64
 run-x86_64: ovmf/ovmf-code-$(ARCH).fd $(IMAGE_NAME).iso
-	qemu-system-$(ARCH) \
-		-M q35 \
-		-drive if=pflash,unit=0,format=raw,file=ovmf/ovmf-code-$(ARCH).fd,readonly=on \
+	qemu-system-x86_64 \
+		-M pc \
+		-drive if=pflash,unit=0,format=raw,file=ovmf/ovmf-code-x86_64.fd,readonly=on \
 		-cdrom $(IMAGE_NAME).iso \
+		-drive file="disk.img",if=ide \
 		$(QEMUFLAGS)
 
 .PHONY: run-hdd-x86_64
@@ -173,8 +174,10 @@ $(IMAGE_NAME).iso: limine/limine kernel
 	cp -v kernel/a_depends/initramfs.axf iso_root/boot/sys64/initramfs.axf
 	mkdir -p iso_root/boot/sys64/fonts
 	cp -v kernel/a_depends/zap-light16.psf iso_root/boot/sys64/fonts/zap-light16.psf
+	cp -v kernel/a_depends/Arabic.psf iso_root/boot/sys64/fonts/Arabic.psf
 	cp -v kernel/a_depends/kern64.config iso_root/boot/sys64/kern64.config
 	cp -v kernel/a_depends/AtlasOS256.bmp iso_root/boot/sys64/AtlasOS256.bmp
+	cp -v kernel/a_depends/elfbin iso_root/boot/sys64/elfbin
 	mkdir -p iso_root/boot/limine
 	cp -v limine.conf iso_root/boot/limine/
 	mkdir -p iso_root/EFI/BOOT

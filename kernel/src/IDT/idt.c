@@ -1,8 +1,9 @@
 #include "idt.h"
 #include <gpx1.h>
 #include <HtKernelUtils/debug.h>
-#include <paging/paging.h>
+#include <memory/paging.h>
 #include <HtKernelUtils/debug.h>
+#include <Language/language.h>
 
 typedef struct {
 	uint16_t    isr_low;      // The lower 16 bits of the ISR's address
@@ -19,11 +20,29 @@ static idt_entry_t idt[256]; // Create an array of IDT entries; aligned for perf
 
 static idtr_t idtr;
 
-char error_codes[20][128] = {
+char error_codes[80][128] = {
+    // English Errors (0-19)
     "Division by 0", "Reserved1", "NMI Interrupt", "Breakpoint (INT3)", "Overflow (INTO)", "Bounds range exceeded (BOUND)", "Invalid opcode (UD2)",
     "Device not available (WAIT/FWAIT)", "Double fault", "Coprocessor segment overrun", "Invalid TSS", "Segment not present", "Stack-segment fault",
-    "General protection fault (GPFault)", "Page fault", "Reserved2", "x87 FPU error", "Alignment check", "SIMD Floating-Point Exception", "Reserved3"
+    "General protection fault (GPFault)", "Page fault", "Reserved2", "x87 FPU error", "Alignment check", "SIMD Floating-Point Exception", "Reserved3",
+
+    // French Errors (20-39)
+    "Division par 0", "Reserve1", "Interruption NMI", "Point d'arret (INT3)", "Debordement (INTO)", "Plage de limites depassee (BOUND)", "Code d'operation non valide (UD2)",
+    "Appareil non disponible (WAIT/FWAIT)", "Double faute", "Depassement de segment du coprocesseur", "TSS invalide", "Segment non present", "Defaut de segment de pile",
+    "Defaut de protection generale (GPFault)", "Defaut de page", "Reserve2", "Erreur FPU x87", "Controle d'alignement", "Exception a virgule flottante SIMD", "Reserve3",
+
+    // German Errors (40-59)
+    "Division durch 0", "Reserviert1", "NMI-Interrupt", "Breakpoint (INT3)", "Ueberlauf (INTO)", "Bereichsueberschreitung (BOUND)", "Ungueltiger Opcode (UD2)",
+    "Geraet nicht verfuegbar (WAIT/FWAIT)", "Doppelfehler", "Coprocessor-Segmentueberlauf", "Ungueltiger TSS", "Segment nicht vorhanden", "Stack-Segmentfehler",
+    "Allgemeiner Schutzfehler (GPFault)", "Seitenfehler", "Reserviert2", "x87 FPU-Fehler", "Ausrichtungspruefung", "SIMD Gleitkomma-Fehler", "Reserviert3",
+
+    // Spanish Errors (60-79)
+    "Division por 0", "Reservado1", "Interrupcion NMI", "Punto de interrupcion (INT3)", "Desbordamiento (INTO)", "Rango de limites excedido (BOUND)", "Operacion no valida (UD2)",
+    "Dispositivo no disponible (WAIT/FWAIT)", "Fallo doble", "Desbordamiento de segmento coprocesador", "TSS invalido", "Segmento no presente", "Fallo de segmento de pila",
+    "Fallo de proteccion general (GPFault)", "Fallo de pagina", "Reservado2", "Error FPU x87", "Chequeo de alineacion", "Excepcion de punto flotante SIMD", "Reservado3"
 };
+
+int SkipPf = 0;
 
 void exception_handler(int exception) {
     DrawRect(0, 0, GetFb()->width, GetFb()->height, 0xFF357EC7);
@@ -32,70 +51,15 @@ void exception_handler(int exception) {
     FontPutStr(":( An error just occured. Halting...", 4, 6, 0xFF000000);
     FontPutStr(":( An error just occured. Halting...", 6, 4, 0xFF000000);
     FontPutStr(":( An error just occured. Halting...", 5, 5, 0xFFFFFFFF);
-    switch (exception) {
-        case 0:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 1:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 2:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 3:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 4:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 5:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 6:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 7:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 8:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 9:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 10:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 11:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 12:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 13:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 14:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 15:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 16:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 17:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 18:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 19:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
-        case 20:
-            FontPutStr(error_codes[exception], 20, 20, 0xFFFFFFFF);
-            break;
+    int langauge = GetLanguage();
+    int index = langauge * 20 + exception;
+
+    if (0 <= exception && exception <= 20) {
+        FontPutStr(error_codes[index], 26, 26, 0xFF000000);
+        FontPutStr(error_codes[index], 24, 24, 0xFF000000);
+        FontPutStr(error_codes[index], 24, 26, 0xFF000000);
+        FontPutStr(error_codes[index], 26, 24, 0xFF000000);
+        FontPutStr(error_codes[index], 25, 25, 0xFFFFFFFF);
     }
     __asm__ volatile ("cli; hlt"); // Completely hangs the computer
     while (1);

@@ -1,5 +1,5 @@
 #include <gpx1.h>
-#include <paging/paging.h>
+#include <memory/paging.h>
 
 typedef struct {
     uint64_t x;

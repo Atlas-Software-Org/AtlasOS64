@@ -50,3 +50,25 @@ int memcmp(const void *s1, const void *s2, size_t n) {
 
     return 0;
 }
+
+struct limine_memmap_response* LmMap;
+
+void SetLmMap(struct limine_memmap_response* mMap) {
+    LmMap = mMap;
+}
+
+struct limine_memmap_response* GetLmMap() {
+    return LmMap;
+}
+
+uint64_t GetMemorySize(struct limine_memmap_response* mMap) {
+    static uint64_t memorySizeBytes = 0;
+    if (memorySizeBytes > 0) return memorySizeBytes;
+
+    for (int i = 0; i < mMap->entry_count; i++) {
+        struct limine_memmap_entry* desc = mMap->entries[i];
+        memorySizeBytes += desc->length;
+    }
+
+    return memorySizeBytes;
+}

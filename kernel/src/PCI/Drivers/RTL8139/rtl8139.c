@@ -1,7 +1,7 @@
 #include "rtl8139.h"
 #include <HtKernelUtils/debug.h>
 #include <HtKernelUtils/io.h>
-#include <paging/paging.h>
+#include <memory/paging.h>
 #include <mem/mem.h>
 #include <PCI/PCI.h>
 #include <IDT/idt.h>

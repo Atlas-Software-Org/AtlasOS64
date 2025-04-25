@@ -2,181 +2,187 @@
 #include <Regs.h>
 #include <stdint.h>
 
-#define IOFSOpen 0
-#define IOFSClose 1
-#define IOFSWrite 2
-#define IOFSRead 3
-#define IOFSSeek 4
-#define IOFSRename 5
-#define IOFSDelete 6
-#define IOFSGetSize 7
-#define IORDOpen 8
-#define IORDClose 9
-#define IORDWrite 10
-#define IORDRead 11
-#define IOConWrite 12
-#define IOConRead 13
-#define HTThreadSet 14
-#define HTThreadUnset 15
-#define HTThreadsSched 16
-#define HTThreadsYield 17
-#define gpx1IOWrite 18
-#define gpx1IORead 19
-#define gpx1winCreate 20
-#define IOMMap 21
-#define IOMUMAP 22
-#define HTThreadsCreateProc 23
-#define HTThreadsTerminateProc 24 // exit on error
-#define HTThreadsExitProc 25 // exit on finished
+static inline long syscall0(long num) {
+    long ret;
+    asm volatile ("syscall" : "=a"(ret) : "a"(num) : "rcx", "r11", "memory");
+    return ret;
+}
 
-#include <HtKernelUtils/debug.h>
-#include <gpx1.h>
-#include <RD/RamDisk.h>
-#include <TTY/AtsTty.h>
-#include <InterruptDescriptors/Drivers/KeyboardDev/KbdDev.h>
-__attribute__((interrupt)) void SyscallInt_Hndlr(struct InterruptFrame* Frame) {
-    x64Regs __proc_regs;
-    x64ReadRegs(&__proc_regs);
-    x64Regs* regs = &__proc_regs;
+static inline long syscall1(long num, long arg1) {
+    long ret;
+    asm volatile ("syscall" : "=a"(ret) : "a"(num), "D"(arg1) : "rcx", "r11", "memory");
+    return ret;
+}
 
-    switch (regs->rax) { // Syscall number
-        case IOFSOpen:
-            // Syscall for opening a file
-            break;
+static inline long syscall2(long num, long arg1, long arg2) {
+    long ret;
+    asm volatile ("syscall" : "=a"(ret) : "a"(num), "D"(arg1), "S"(arg2) : "rcx", "r11", "memory");
+    return ret;
+}
 
-        case IOFSClose:
-            // Syscall for closing a file
-            break;
+static inline long syscall3(long num, long arg1, long arg2, long arg3) {
+    long ret;
+    asm volatile ("syscall" : "=a"(ret) : "a"(num), "D"(arg1), "S"(arg2), "d"(arg3) : "rcx", "r11", "memory");
+    return ret;
+}
 
-        case IOFSWrite:
-            // Syscall for writing to a file
-            break;
+static inline long syscall4(long num, long arg1, long arg2, long arg3, long arg4) {
+    register long r10 asm("r10") = arg4;
+    long ret;
+    asm volatile ("syscall" : "=a"(ret) : "a"(num), "D"(arg1), "S"(arg2), "d"(arg3), "r"(r10) : "rcx", "r11", "memory");
+    return ret;
+}
 
-        case IOFSRead:
-            // Syscall for reading from a file
-            break;
+static inline long syscall5(long num, long arg1, long arg2, long arg3, long arg4, long arg5) {
+    register long r10 asm("r10") = arg4;
+    register long r8  asm("r8")  = arg5;
+    long ret;
+    asm volatile ("syscall" : "=a"(ret) : "a"(num), "D"(arg1), "S"(arg2), "d"(arg3), "r"(r10), "r"(r8) : "rcx", "r11", "memory");
+    return ret;
+}
 
-        case IOFSSeek:
-            // Syscall for seeking in a file
-            break;
+static inline long syscall6(long num, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
+    register long r10 asm("r10") = arg4;
+    register long r8  asm("r8")  = arg5;
+    register long r9  asm("r9")  = arg6;
+    long ret;
+    asm volatile ("syscall" : "=a"(ret) : "a"(num), "D"(arg1), "S"(arg2), "d"(arg3), "r"(r10), "r"(r8), "r"(r9) : "rcx", "r11", "memory");
+    return ret;
+}
 
-        case IOFSRename:
-            // Syscall for renaming a file
-            break;
-
-        case IOFSDelete:
-            // Syscall for deleting a file
-            break;
-
-        case IOFSGetSize:
-            // Syscall for getting the size of a file
-            break;
-
-        case IORDOpen:
-            // Syscall for opening a RamDisk
-            break;
-
-        case IORDClose:
-            // Syscall for closing a RamDisk
-            break;
-
-        case IORDWrite:
-            // Syscall for writing to a RamDisk
-            break;
-
-        case IORDRead:
-            // Syscall for reading from a RamDisk
-            break;
-
-        case IOConWrite:
-            char* write_ptr_sys_write = (char*)regs->rsi;
-            size_t write_len_sys_write = (size_t)regs->rdx;
-            for (size_t i = 0; i < write_len_sys_write; i++) {
-                char c = write_ptr_sys_write[i];
-                if (c == 0x08 || c == 0x0A || c == 0x0D || (0x20 <= c && c <= 0x7E)) {
-                    tty_putchar(write_ptr_sys_write[i]);
-                }
-            }
-            break;
-
-        case IOConRead:
-            char* dst = (char*)regs->rsi;
-            size_t maxlen = (size_t)regs->rdx;
-
-            for (size_t i = 0; i < maxlen; i++) {
-                char c = (char)__keyboard_getc();
-                tty_putchar(c);
-                dst[i] = c;
-                if (c == '\n') {
-                    regs->rax = i + 1;
-                    break;
-                }
-            }
-
-            break;
-
-        case HTThreadSet:
-            // Syscall for setting a thread for execution
-            break;
-
-        case HTThreadUnset:
-            // Syscall for marking a thread as unused
-            break;
-
-        case HTThreadsSched:
-            // Syscall for scheduling threads for execution
-            break;
-
-        case HTThreadsYield:
-            // Syscall for yielding the CPU to another thread
-            break;
-
-        case gpx1IOWrite:
-            uint64_t ReqX = regs->rsi;
-            uint64_t ReqY = regs->rdx;
-            uint32_t Clr = regs->r10;
-            PutPx(ReqX, ReqY, Clr);
-            break;
-        case gpx1IORead:
-            void* addrx = (void*)regs->rsi;
-            void* addry = (void*)regs->rdx;
-            void* addrclr = (void*)regs->r10;
-            // Dereference the passed addresses
-            uint64_t* x = (uint64_t*)addrx;
-            uint64_t* y = (uint64_t*)addry;
-            uint64_t* clr = (uint64_t*)addrclr;
-            
-            // Get the pixel color at the coordinates (x, y)
-            *clr = GetPx(*x, *y);
-            break;
-
-        case gpx1winCreate:
-            // Syscall for creating a graphical window
-            break;
-
-        case IOMMap:
-            // Syscall for mapping memory (mapping pages)
-            break;
-
-        case IOMUMAP:
-            // Syscall for unmapping memory (unmapping pages)
-            break;
-
-        case HTThreadsCreateProc:
-            // Syscall for creating a new process
-            break;
-
-        case HTThreadsTerminateProc:
-            // Syscall for terminating a process (exit on error)
-            break;
-
-        case HTThreadsExitProc:
-            // Syscall for exiting a process (finished)
-            break;
-
+// Dispatcher function
+long syscall_dispatcher(long syscall_num, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6) {
+    switch (syscall_num) {
+        case SYS_open:
+            return sys_open((const char*)arg1, (int)arg2);
+        case SYS_close:
+            return sys_close((int)arg1);
+        case SYS_read:
+            return sys_read((int)arg1, (void*)arg2, (size_t)arg3);
+        case SYS_write:
+            return sys_write((int)arg1, (const void*)arg2, (size_t)arg3);
+        case SYS_pread:
+            return sys_pread((int)arg1, (void*)arg2, (size_t)arg3, (off_t)arg4);
+        case SYS_pwrite:
+            return sys_pwrite((int)arg1, (const void*)arg2, (size_t)arg3, (off_t)arg4);
+        case SYS_lseek:
+            return sys_lseek((int)arg1, (off_t)arg2, (int)arg3);
+        case SYS_fsync:
+            return sys_fsync((int)arg1);
+        case SYS_fdatasync:
+            return sys_fdatasync((int)arg1);
+        case SYS_dup:
+            return sys_dup((int)arg1);
+        case SYS_dup2:
+            return sys_dup2((int)arg1, (int)arg2);
+        case SYS_pipe:
+            return sys_pipe((int*)arg1);
+        case SYS_pipe2:
+            return sys_pipe2((int*)arg1, (int)arg2);
+        case SYS_truncate:
+            return sys_truncate((const char*)arg1, (off_t)arg2);
+        case SYS_ftruncate:
+            return sys_ftruncate((int)arg1, (off_t)arg2);
+        case SYS_rename:
+            return sys_rename((const char*)arg1, (const char*)arg2);
+        case SYS_link:
+            return sys_link((const char*)arg1, (const char*)arg2);
+        case SYS_symlink:
+            return sys_symlink((const char*)arg1, (const char*)arg2);
+        case SYS_readlink:
+            return sys_readlink((const char*)arg1, (char*)arg2, (size_t)arg3);
+        case SYS_stat:
+            return sys_stat((const char*)arg1, (struct stat*)arg2);
+        case SYS_lstat:
+            return sys_lstat((const char*)arg1, (struct stat*)arg2);
+        case SYS_fstat:
+            return sys_fstat((int)arg1, (struct stat*)arg2);
+        case SYS_chmod:
+            return sys_chmod((const char*)arg1, (mode_t)arg2);
+        case SYS_fchmod:
+            return sys_fchmod((int)arg1, (mode_t)arg2);
+        case SYS_fchmodat:
+            return sys_fchmodat((int)arg1, (const char*)arg2, (mode_t)arg3);
+        case SYS_mkdir:
+            return sys_mkdir((const char*)arg1, (mode_t)arg2);
+        case SYS_rmdir:
+            return sys_rmdir((const char*)arg1);
+        case SYS_chdir:
+            return sys_chdir((const char*)arg1);
+        case SYS_fchdir:
+            return sys_fchdir((int)arg1);
+        case SYS_getcwd:
+            return (long)sys_getcwd((char*)arg1, (size_t)arg2);
+        case SYS_access:
+            return sys_access((const char*)arg1, (int)arg2);
+        case SYS_faccessat:
+            return sys_faccessat((int)arg1, (const char*)arg2, (int)arg3);
+        case SYS_utime:
+            return sys_utime((const char*)arg1, (const struct utimbuf*)arg2);
+        case SYS_utimensat:
+            return sys_utimensat((int)arg1, (const char*)arg2, (const struct timespec*)arg3, (int)arg4);
+        case SYS_futimens:
+            return sys_futimens((int)arg1, (const struct timespec*)arg2);
+        case SYS_mkfifo:
+            return sys_mkfifo((const char*)arg1, (mode_t)arg2);
+        case SYS_mkfifoat:
+            return sys_mkfifoat((int)arg1, (const char*)arg2, (mode_t)arg3);
+        case SYS_mknod:
+            return sys_mknod((const char*)arg1, (mode_t)arg2, (dev_t)arg3);
+        case SYS_fork:
+            return sys_fork();
+        case SYS_execve:
+            return sys_execve((const char*)arg1, (char* const*)arg2, (char* const*)arg3);
+        case SYS_execv:
+            return sys_execv((const char*)arg1, (char* const*)arg2);
+        case SYS_execvp:
+            return sys_execvp((const char*)arg1, (char* const*)arg2);
+        case SYS_execvpe:
+            return sys_execvpe((const char*)arg1, (char* const*)arg2, (char* const*)arg3);
+        case SYS_exit:
+            sys_exit((int)arg1);
+            return 0;  // Exit the process
+        case SYS_wait:
+            return sys_wait((int*)arg1);
+        case SYS_waitpid:
+            return sys_waitpid((pid_t)arg1, (int*)arg2, (int)arg3);
+        case SYS_waitid:
+            return sys_waitid((int)arg1, (id_t)arg2, (siginfo_t*)arg3, (int)arg4);
+        case SYS_kill:
+            return sys_kill((pid_t)arg1, (int)arg2);
+        case SYS_getpid:
+            return sys_getpid();
+        case SYS_getppid:
+            return sys_getppid();
+        case SYS_getuid:
+            return sys_getuid();
+        case SYS_geteuid:
+            return sys_geteuid();
+        case SYS_getgid:
+            return sys_getgid();
+        case SYS_getegid:
+            return sys_getegid();
+        case SYS_setuid:
+            return sys_setuid((uid_t)arg1);
+        case SYS_seteuid:
+            return sys_seteuid((uid_t)arg1);
+        case SYS_setgid:
+            return sys_setgid((gid_t)arg1);
+        case SYS_setegid:
+            return sys_setegid((gid_t)arg1);
+        case SYS_setpgid:
+            return sys_setpgid((pid_t)arg1, (pid_t)arg2);
+        case SYS_getpgid:
+            return sys_getpgid((pid_t)arg1);
+        case SYS_getpgrp:
+            return sys_getpgrp();
+        case SYS_setpgrp:
+            return sys_setpgrp();
+        case SYS_setsid:
+            return sys_setsid();
+        case SYS_getsid:
+            return sys_getsid((pid_t)arg1);
         default:
-            break;
+            return -1;  // Unknown syscall
     }
-
-    x64WriteRegs(&__proc_regs);
 }

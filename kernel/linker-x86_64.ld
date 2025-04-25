@@ -21,7 +21,9 @@ SECTIONS
     /* and because that is what the Limine spec mandates. */
     /* Any address in this region will do, but often 0xffffffff80000000 is chosen as */
     /* that is the beginning of the region. */
-    . = 0xffffffff80000000;
+    . = 0xFFFFFFFE00000000;
+    . = 0xFFFFFFFF80000000;
+    StartKernel = 0xffffffff80000000;
 
     /* Define a section to contain the Limine requests and assign it to its own PHDR */
     .limine_requests : {
@@ -74,4 +76,6 @@ SECTIONS
         *(.eh_frame*)
         *(.note .note.*)
     }
+
+    EndKernel = .;
 }

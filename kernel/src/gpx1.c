@@ -3,6 +3,7 @@
 
 struct limine_framebuffer* main_fb;
 PSF1_FONT* main_psf1_font;
+PSF1_FONT* mainAr_psf1_font;
 uint32_t ClearColor;
 
 bool MouseDrawn;
@@ -240,6 +241,38 @@ void FontPutChar(char c, uint64_t x, uint64_t y, uint32_t clr) {
     }
 }
 
+void ArPutc(char c, uint64_t x, uint64_t y, uint32_t clr) {
+    uint8_t* fontPtr = (uint8_t*)mainAr_psf1_font->glyphBuffer + (c * main_psf1_font->psf1_Header->charsize);
+
+    for (uint64_t row = 0; row < mainAr_psf1_font->psf1_Header->charsize; row++) {
+        uint8_t pixelData = fontPtr[row];
+
+        for (uint64_t col = 0; col < 8; col++) {
+            if ((pixelData >> (7 - col)) & 1) {
+                PutPx(x + col, y + row, clr);
+            }
+        }
+    }
+}
+
+void FontPutCharSize(char c, uint64_t x, uint64_t y, uint32_t clr, int size_multiplier) {
+    uint8_t* fontPtr = (uint8_t*)main_psf1_font->glyphBuffer + (c * main_psf1_font->psf1_Header->charsize);
+
+    for (uint64_t row = 0; row < main_psf1_font->psf1_Header->charsize; row++) {
+        uint8_t pixelData = fontPtr[row];
+
+        for (uint64_t col = 0; col < 8; col++) {
+            if ((pixelData >> (7 - col)) & 1) {
+                for (int dy = 0; dy < size_multiplier; dy++) {
+                    for (int dx = 0; dx < size_multiplier; dx++) {
+                        PutPx(x + (col * size_multiplier) + dx, y + (row * size_multiplier) + dy, clr);
+                    }
+                }
+            }
+        }
+    }
+}
+
 void FontPutStr(const char* s, uint64_t x, uint64_t y, uint32_t clr) {
     uint64_t xoff = x;
     uint64_t yoff = y;
@@ -275,6 +308,72 @@ void FontPutStr(const char* s, uint64_t x, uint64_t y, uint32_t clr) {
 
             FontPutChar(c, xoff, yoff, clr);
             xoff += 8;
+        }
+
+        s++;
+    }
+}
+
+void ArPuts(const char* _s, uint64_t x, uint64_t y, uint32_t clr) {
+	int len = 0;
+	char* copy = _s;
+
+	while (*copy != 0) {
+		copy++;
+		len++;
+	}
+
+	int xOff = len*8;
+	int yOff = 0;
+	while (*_s != 0) {
+		if (*_s == '\n') {
+			yOff += 16;
+			xOff = 0;
+		} else if (*_s == '\r') {
+			xOff = 0;
+		}
+	
+		ArPutc(*_s, x+xOff, y+yOff, clr);
+		xOff-=8;
+		_s++;
+	}
+}
+
+void FontPutStrSize(const char* s, uint64_t x, uint64_t y, uint32_t clr, int size_multiplier) {
+    uint64_t xoff = x;
+    uint64_t yoff = y;
+
+    uint64_t screenwidthChars = main_fb->width / (8*size_multiplier);
+    uint64_t screenheightChars = main_fb->height / (16*size_multiplier);
+
+    while (*s) {
+        char c = *s;
+
+        if (c == '\b') {
+            if (xoff > x) {
+                xoff -= 8*size_multiplier;
+            }
+            DrawRect(xoff, yoff, 8*size_multiplier, 16*size_multiplier, ClearColor);
+        } else if (c == '\n') {
+            xoff = x;
+            yoff += 16*size_multiplier;
+        } else if (c == '\r') {
+            xoff = x;
+        } else {
+            if (xoff + (8*size_multiplier) > main_fb->width) {
+                xoff = x;
+                yoff += 16*size_multiplier;
+            }
+
+            if (yoff + (16*size_multiplier) > main_fb->height) {
+                s++;
+                if (*s == 0) {
+                    s--;
+                }
+            }
+
+            FontPutCharSize(c, xoff, yoff, clr, size_multiplier);
+            xoff += 8*size_multiplier;
         }
 
         s++;
@@ -546,4 +645,124 @@ void DrawBmp(void* ptr, uint64_t size, int xoff, int yoff) {
             PutPx(x + xoff, y + yoff, color);
         }
     }
+}
+
+int gpx1_abs(int x) {
+    return x < 0 ? -x : x;
+}
+
+void DrawLine(int x0, int y0, int x1, int y1, uint32_t color) {
+    int dx = gpx1_abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+    int dy = -gpx1_abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy, e2;
+    while (1) {
+        PutPx(x0, y0, color);
+        if (x0 == x1 && y0 == y1) break;
+        e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+}
+
+char* En2Ar(const char* _en_pron, void* out) {
+	int len = 0;
+	const char* copy = _en_pron;
+	while (*copy != 0) {
+		copy++;
+		len++;
+	}
+
+	char *result = (char*)out;
+
+	for (int i = 0; i < len; i++) {
+		switch (_en_pron[i]) {
+			case 'h': result[i] = 'A'; break;
+			case 'f': result[i] = 'B'; break;
+			case 'j': result[i] = 'C'; break;
+			case 'e': result[i] = 'D'; break;
+			case '[': result[i] = 'E'; break;
+			case 'p': result[i] = 'F'; break;
+			case 'o': result[i] = 'G'; break;
+			case ']': result[i] = 'H'; break;
+			case '`': result[i] = 'I'; break;
+			case 'v': result[i] = 'J'; break;
+			case '.': result[i] = 'K'; break;
+			case 's': result[i] = 'L'; break;
+			case 'a': result[i] = 'M'; break;
+			case 'w': result[i] = 'N'; break;
+			case 'q': result[i] = 'O'; break;
+			case '\'': result[i] = 'P'; break;
+			case '/': result[i] = 'Q'; break;
+			case 'u': result[i] = 'R'; break;
+			case 'y': result[i] = 'S'; break;
+			case 't': result[i] = 'T'; break;
+			case 'r': result[i] = 'U'; break;
+			case ';': result[i] = 'V'; break;
+			case 'g': result[i] = 'W'; break;
+			case 'l': result[i] = 'X'; break;
+			case 'k': result[i] = 'Y'; break;
+			case 'i': result[i] = 'Z'; break;
+			case ',': result[i] = 'Z'+1; break;
+			case 'd': result[i] = 'Z'+2; break;
+			default: result[i] = _en_pron[i]; break;
+		}
+	}
+
+	result[len] = 0;
+	return result;
+}
+
+char* UniAr2Ar(const char* _s, void* out) {
+	int len = 0;
+	while (*_s != 0 || *_s != 0xA) {
+		len++;
+		_s++;
+	}
+	len /= 2;
+
+	uint16_t ArChars[len];
+	for (int i = 0; i < len*2; i++) {
+		ArChars[i] = (_s[2 * i + 1] << 8) | _s[2 * i];
+	}
+
+	char* result = (char*)out;
+
+	for (int i = 0; i < len; i++) {
+		switch (ArChars[i]) {
+			case 0xD8A7: result[i] = 'A'; break;
+			case 0xD8A8: result[i] = 'B'; break;
+			case 0xD8AA: result[i] = 'C'; break;
+			case 0xD8AB: result[i] = 'D'; break;
+			case 0xD8AC: result[i] = 'E'; break;
+			case 0xD8AD: result[i] = 'F'; break;
+			case 0xD8AE: result[i] = 'G'; break;
+			case 0xD8AF: result[i] = 'H'; break;
+			case 0xD8B0: result[i] = 'J'; break;
+			case 0xD8B1: result[i] = 'K'; break;
+			case 0xD8B2: result[i] = 'L'; break;
+			case 0xD8B3: result[i] = 'M'; break;
+			case 0xD8B4: result[i] = 'N'; break;
+			case 0xD8B5: result[i] = 'O'; break;
+			case 0xD8B6: result[i] = 'P'; break;
+			case 0xD8B7: result[i] = 'Q'; break;
+			case 0xD8B8: result[i] = 'R'; break;
+			case 0xD8B9: result[i] = 'S'; break;
+			case 0xD8BA: result[i] = 'T'; break;
+			case 0xD981: result[i] = 'U'; break;
+			case 0xD982: result[i] = 'V'; break;
+			case 0xD983: result[i] = 'W'; break;
+			case 0xD984: result[i] = 'X'; break;
+			case 0xD985: result[i] = 'Y'; break;
+			case 0xD986: result[i] = 'Z'; break;
+			case 0xD987: result[i] = 'Z'+1; break;
+			case 0xD988: result[i] = 'Z'+2; break;
+			case 0xD98A: result[i] = 'Z'+3; break;
+			case 0:
+			case 0xA:
+			default:
+				break;
+		}
+	}
+
+	return result;
 }

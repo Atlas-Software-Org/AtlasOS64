@@ -12,8 +12,8 @@
 
 typedef struct {
     uint8_t AI_MAG[3];
-    uint64_t AEntry;
     uint8_t AArch;
+    uint64_t AEntry;
     uint8_t AVersion;
     uint16_t ATrgtOS;
     uint8_t AAbi;
@@ -31,8 +31,8 @@ typedef union {
 
 typedef struct {
     uint8_t AI_MAG[3];
-    uint32_t AEntry;
     uint8_t AArch;
+    uint32_t AEntry;
     uint8_t AVersion;
     uint16_t ATrgtOS;
     uint8_t AAbi;
@@ -65,7 +65,8 @@ typedef union {
 
 /* Target OS */
 
-#define AtlasOS64 0xFFFF
+#define ATrgt_AtlasOS64 0xFFFF
+#define ATrgt_Linux     0xFFFE
 
 /* ABI */
 
