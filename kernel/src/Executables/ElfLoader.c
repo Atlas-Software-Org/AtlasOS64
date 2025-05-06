@@ -1,32 +1,27 @@
 #include "ElfLoader.h"
 #include <elf.h>
 
-int load_elf_binary(void* ptr, size_t size, uint64_t expected_load_address) {
-    Elf64_Ehdr* ehdr = (Elf64_Ehdr*)ptr;
-    if (memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0) return -1;
-    if (ehdr->e_ident[EI_CLASS] != ELFCLASS64) return -2;
-    if (ehdr->e_type != ET_EXEC) return -3;
-    if (ehdr->e_machine != EM_X86_64) return -4;
+void ExecElf(void* ptr) {
+    Elf64_Ehdr* hdr = (Elf64_Ehdr*)ptr;
 
-    Elf64_Phdr* phdr = (Elf64_Phdr*)((uint8_t*)ptr + ehdr->e_phoff);
+    if (hdr->e_ident[0] != 0x7F || hdr->e_ident[1] != 'E' || hdr->e_ident[2] != 'L' || hdr->e_ident[3] != 'F') return;
+    if (hdr->e_ident[4] != 2) return;
+    if (hdr->e_machine != 0x3E) return;
+    if (hdr->e_type != 2) return;
 
-    for (int i = 0; i < ehdr->e_phnum; i++) {
-        if (phdr[i].p_type != PT_LOAD) continue;
-
-        void* dest = (void*)(expected_load_address + phdr[i].p_vaddr);
-        void* src  = (uint8_t*)ptr + phdr[i].p_offset;
-
-        memcpy(dest, src, phdr[i].p_filesz);
-
-        if (phdr[i].p_memsz > phdr[i].p_filesz) {
-            memset((uint8_t*)dest + phdr[i].p_filesz, 0, phdr[i].p_memsz - phdr[i].p_filesz);
+    Elf64_Phdr* phdr = (Elf64_Phdr*)((uint8_t*)ptr + hdr->e_phoff);
+    for (uint16_t i = 0; i < hdr->e_phnum; i++) {
+        if (phdr[i].p_type != 1) continue;
+        uint8_t* src = (uint8_t*)ptr + phdr[i].p_offset;
+        uint8_t* dst = (uint8_t*)phdr[i].p_vaddr;
+        for (uint64_t j = 0; j < phdr[i].p_filesz; j++) {
+            dst[j] = src[j];
+        }
+        for (uint64_t j = phdr[i].p_filesz; j < phdr[i].p_memsz; j++) {
+            dst[j] = 0;
         }
     }
 
-    uint64_t entry_point = ehdr->e_entry + expected_load_address;
-
-    void (*entry_func)() = (void (*)())entry_point;
-    entry_func();
-
-    return 0;
+    void (*entry)() = (void (*)())hdr->e_entry;
+    entry();
 }

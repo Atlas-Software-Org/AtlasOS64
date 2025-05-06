@@ -186,3 +186,94 @@ long syscall_dispatcher(long syscall_num, long arg1, long arg2, long arg3, long 
             return -1;  // Unknown syscall
     }
 }
+
+__attribute__((naked)) void syscall_entry() {
+    asm volatile (
+        ".intel_syntax noprefix\n"
+        
+        "swapgs\n"
+
+        // Save volatile registers per syscall ABI
+        "pushq rdi\n"
+        "pushq rsi\n"
+        "pushq rdx\n"
+        "pushq r10\n"
+        "pushq r8\n"
+        "pushq r9\n"
+
+        // rcx = return RIP, r11 = return RFLAGS
+        "movq rcx, r10\n"  // syscall number often passed in rax, extra arg in rcx
+
+        "call syscall_dispatcher\n"
+
+        // Restore volatile registers
+        "popq r9\n"
+        "popq r8\n"
+        "popq r10\n"
+        "popq rdx\n"
+        "popq rsi\n"
+        "popq rdi\n"
+
+        "swapgs\n"
+
+        "sysretq\n"
+
+        ".att_syntax prefix\n"
+    );
+}
+
+#define EFER_MSR        0xC0000080
+#define STAR_MSR        0xC0000081
+#define LSTAR_MSR       0xC0000082
+#define FMASK_MSR       0xC0000084
+#define EFER_SCE        (1 << 0)
+
+#define KERNEL_CS       0x08
+#define USER_CS         0x18
+#define USER_SS         0x20  // Usually USER_CS + 0x8
+
+static inline void wrmsr(unsigned int msr, uint32_t low, uint32_t high)
+{
+    __asm__ volatile("wrmsr" : : "c"(msr), "a"(low), "d"(high));
+}
+
+static inline uint64_t native_read_msr(uint32_t msr)
+{
+    uint32_t low, high;
+    __asm__ volatile("rdmsr" : "=a"(low), "=d"(high) : "c"(msr));
+    return ((uint64_t)high << 32) | low;
+}
+
+#define rdmsr(msr, low, high)                         \
+do {                                                  \
+    uint64_t __val = native_read_msr(msr);            \
+    (low) = (uint32_t)__val;                          \
+    (high) = (uint32_t)(__val >> 32);                 \
+} while (0)
+
+#define MSR_STAR   0xC0000081
+#define MSR_LSTAR  0xC0000082
+#define MSR_FMASK  0xC0000084
+#define MSR_EFER   0xC0000080
+#define EFER_SCE   (1 << 0)
+
+#define __KERNEL_CS  0x08
+#define __USER_CS    0x18
+
+void InitSyscall(void) {
+    uint64_t lstar = (uint64_t)&syscall_entry;
+    uint64_t fmask = (1 << 9);  // Clear IF on syscall
+
+    // Set STAR: user CS selector (bits 47:32), kernel CS selector (bits 31:16)
+    wrmsr(MSR_STAR, 0, (__USER_CS << 16) | __KERNEL_CS);
+
+    // Set syscall entry point
+    wrmsr(MSR_LSTAR, (uint32_t)lstar, (uint32_t)(lstar >> 32));
+
+    // Set flags mask (e.g., clear IF)
+    wrmsr(MSR_FMASK, (uint32_t)fmask, 0);
+
+    // Enable syscall instruction in EFER
+    uint64_t efer = native_read_msr(MSR_EFER);
+    wrmsr(MSR_EFER, (uint32_t)efer | EFER_SCE, (uint32_t)(efer >> 32));
+}

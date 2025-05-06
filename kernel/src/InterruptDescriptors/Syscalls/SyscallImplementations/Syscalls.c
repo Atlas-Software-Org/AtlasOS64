@@ -15,7 +15,26 @@ ssize_t sys_read(int fd, void* buf, size_t count) {
 }
 
 ssize_t sys_write(int fd, const void* buf, size_t count) {
-    return 0;
+    char* __buf = (char*)buf;
+    ssize_t cnt = 0;
+    switch (fd) {
+        case 0: /* STDOUT */
+            for (int i = 0; i < count && __buf[i] != 0; i++) {
+                tty_putchar(__buf[i]);
+                cnt++;
+            }
+            break;
+        case 1: /* STDERR */
+            for (int i = 0; i < count && __buf[i] != 0; i++) {
+                tty_putchar(__buf[i]);
+                e9debugkf("%c", __buf[i]);
+                cnt++;
+            }
+            break;
+        default:
+            break;
+    }
+    return cnt;
 }
 
 ssize_t sys_pread(int fd, void* buf, size_t count, off_t offset) {

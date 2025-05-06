@@ -128,6 +128,9 @@ struct InterruptFrame;
 #define SYS_setsid      63
 #define SYS_getsid      64
 
+#include <TTY/AtsTty.h>
+#include <HtKernelUtils/debug.h>
+
 // Function prototypes for syscall implementations
 int sys_open(const char* path, int flags);
 int sys_close(int fd);
@@ -196,3 +199,5 @@ int sys_setsid(void);
 pid_t sys_getsid(pid_t pid);
 
 long syscall_dispatcher(long syscall_num, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
+
+void InitSyscall();

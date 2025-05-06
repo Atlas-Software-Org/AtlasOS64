@@ -115,6 +115,11 @@ void e9debugkf(const char* fmt, ...) {
                     buffer[buf_index++] = *str++;
                 }
             } 
+            // Handle char
+            else if (fmt[i] == 'c') {  // Char
+                char chr = va_arg(args, char);
+                buffer[buf_index++] = chr;
+            } 
             // Handle unsigned integer (u)
             else if (fmt[i] == 'u') {  // Unsigned int
                 unsigned int num = va_arg(args, unsigned int);  

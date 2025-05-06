@@ -289,5 +289,32 @@ void kmain(void) {
 
     asm volatile("sti");
 
+    InitPaging();
+
+    DrawRect(0, 0, 512, 512, 0xffff00);
+
+    extern void jump_usermode(void);
+
+    //jump_usermode();
+
     hcf();
 }
+
+__attribute__((naked)) void UserMain() {
+}
+/*
+    const char* str = "Hello, World!";
+
+    asm volatile (
+        ".intel_syntax noprefix\n"
+        "mov rax, 3\n"
+        "mov rdi, 0\n"
+        "mov rsi, %0\n"
+        "mov rdx, 13\n"
+        "syscall\n"
+        ".att_syntax prefix\n"
+        :
+        : "r"(str)
+        : "rax", "rdi", "rsi", "rdx"
+    );
+}*/
