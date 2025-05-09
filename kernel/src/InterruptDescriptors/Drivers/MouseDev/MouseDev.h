@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MOUSEDEV_H
+#define MOUSEDEV_H 1
 
 #include <HtKernelUtils/io.h>
 #include <gpx1.h>
@@ -33,6 +34,7 @@ void ProcessMousePacket();
 void InitPS2Mouse();
 
 Button_t *CreateButton(const char* label, void (*Handler)(), uint64_t x, uint64_t y, uint64_t sx, uint64_t sy);
+int AddButton(Button_t* btn);
 void RemoveButton(int btn_index);
 void CheckBtns(uint64_t x, uint64_t y);
 void SetBtnEnabled(Button_t btn);
@@ -40,3 +42,5 @@ void ClearBtnEnabled(Button_t btn);
 
 struct InterruptFrame;
 __attribute__((interrupt)) void MouseInt_Hndlr(struct InterruptFrame* frame);
+
+#endif /* MOUSEDEV_H */

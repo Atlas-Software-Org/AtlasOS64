@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ATSTTY_H
+#define ATSTTY_H 1
 
 #include <gpx1.h>
 
@@ -16,3 +17,5 @@ uint64_t getCellx();
 uint64_t getCelly();
 
 void ShellRoutine();
+
+#endif /* ATSTTY_H */

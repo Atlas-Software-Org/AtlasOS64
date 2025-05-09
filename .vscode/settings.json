@@ -46,6 +46,7 @@
         "language.h": "c",
         "cstdint": "c",
         "*.temp": "c",
-        "coroutine": "c"
+        "coroutine": "c",
+        "limine.h": "c"
     }
 }

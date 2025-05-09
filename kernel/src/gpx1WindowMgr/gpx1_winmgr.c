@@ -1,127 +1,238 @@
 #include <gpx1.h>
-#include <memory/paging.h>
+#include <memory/heap.h>
+#include <mem/mem.h>
+#include <InterruptDescriptors/Drivers/MouseDev/MouseDev.h>
 
-typedef struct {
-    uint64_t x;
-    uint64_t y;
-    uint64_t width;
-    uint64_t height;
-} Rect;
+RootWindowHandle __ins_root_win_hndl;
+RootWindowHandle *RootWindowTree = &__ins_root_win_hndl;
 
-void FillRect(Rect rect, uint32_t color) {
-    DrawRect(rect.x, rect.y, rect.width, rect.height, color);
+uint8_t RootWindowTreeBitmap[MAX_WIN_USABLE / 8] = {0};
+
+void SetBit(uint8_t* map, uint32_t bit_index, bool state) {
+    uint32_t byte = bit_index / 8;
+    uint8_t bit = bit_index % 8;
+
+    if (state)
+        map[byte] |= (1 << bit);
+    else
+        map[byte] &= ~(1 << bit);
 }
 
-void Blit(void* source, uint32_t pitch, Rect dest) {
-    uint32_t* src_pixels = (uint32_t*)source;
-    uint32_t pixels_per_row = pitch / 4;
+uint8_t GetBit(uint8_t* map, uint32_t bit_index) {
+    uint32_t byte = bit_index / 8;
+    uint8_t bit = bit_index % 8;
 
-    for (uint64_t y = 0; y < dest.height; y++) {
-        for (uint64_t x = 0; x < dest.width; x++) {
-            uint32_t color = src_pixels[y * pixels_per_row + x];
-            PutPx(dest.x + x, dest.y + y, color);
-        }
-    }
+    return (map[byte] >> bit) & 1;
 }
 
-void Repaint(Window* window_ctx) {
-    if (!window_ctx || !window_ctx->winfb) {
-        return;
-    }
-
-    for (uint64_t x = 0; x < window_ctx->winfb->width; x++) {
-        for (uint64_t y = 0; y < 22; y++) {
-            PutPx(window_ctx->winfb->dispx + x, window_ctx->winfb->dispy + y, 0xFF282828);
-        }
-    }
-
-    volatile uint32_t* win_ptr = (volatile uint32_t*)window_ctx->winfb->address;
-    uint64_t pitch_in_pixels = window_ctx->winfb->pitch / 4;
-    for (uint64_t y = 0; y < window_ctx->winfb->height; y++) {
-        for (uint64_t x = 0; x < window_ctx->winfb->width; x++) {
-            uint32_t color = win_ptr[y * pitch_in_pixels + x];
-            PutPx(window_ctx->winfb->dispx + x, window_ctx->winfb->dispy + 22 + y, color);
-        }
-    }
-
-    for (uint64_t x = 0; x < 22; x++) {
-        for (uint64_t y = 0; y < 22; y++) {
-            PutPx(window_ctx->winfb->dispx + window_ctx->winfb->width - 22 + x,
-                  window_ctx->winfb->dispy + y,
-                  0xFFFF0000);
-        }
-    }
-
-    int title_length = 0;
-    while (window_ctx->WinName[title_length] != '\0') {
-        title_length++;
-    }
-    int title_width = title_length * 8;  // Each character is 8px wide.
-    int title_x = window_ctx->winfb->dispx + (window_ctx->winfb->width - title_width) / 2;
-    int title_y = window_ctx->winfb->dispy + (22 - 16) / 2; // Assuming 16px tall font
-    FontPutStr(window_ctx->WinName, title_x, title_y, 0xFFFFFFFF);
-
-    int x_pos = window_ctx->winfb->dispx + window_ctx->winfb->width - 22 + (22 - 8) / 2;
-    int y_pos = window_ctx->winfb->dispy + (22 - 16) / 2;
-    FontPutChar('X', x_pos, y_pos, 0xFFFFFFFF);
+extern void outb(uint16_t,uint8_t);
+int idx = 0;
+void d() {
+    outb(0xE9, 'a'+idx);
+    idx++;
 }
 
-static size_t calculate_pages(uint32_t width, uint32_t height) {
-    size_t total_bytes = (size_t)width * height * 4;
-    return (total_bytes + 4095) / 4096;
+void FinishedWindowProcNone() {
+    asm volatile ("nop");
 }
 
 Window* CreateWindow(char* title, uint64_t width, uint64_t height, void (*FinishWindowProc)) {
-    Window* winctx = (Window*)page_alloc(sizeof(Window) / 4096 + 1);
-    if (!winctx) return NULL;
-
-    winctx->winfb = (WindowFramebuffer*)page_alloc(sizeof(WindowFramebuffer) / 4096 + 1);
-    if (!winctx->winfb) return NULL;
-
-    winctx->WinName = title;
-
-    size_t framebuffer_size = calculate_pages(width, height);
-    winctx->winfb->address = (void*)page_alloc_n(framebuffer_size);
-    if (!winctx->winfb->address) return NULL;
-
-    winctx->winfb->width = width;
-    winctx->winfb->height = height;
-    winctx->winfb->dispx = 25;
-    winctx->winfb->dispy = 25;
-    Button_t exit = {0};
-    exit.Handler = FinishWindowProc;
-    exit.Position.X = 25 + width - 22;
-    exit.Position.Y = 25 + height - 22;
-    exit.Scale.X = 22;
-    exit.Scale.Y = 22;
-    exit.Enabled = 1;
-    
-    winctx->exit_button = exit;      
-
-    for (uint64_t x = 0; x < width; x++) {
-        for (uint64_t y = 0; y < height; y++) {
-            volatile uint32_t* ptr = (volatile uint32_t*)winctx->winfb->address;
-            ptr[y * width + x] = 0xFF303030;
+    int slot_found = -1;
+    for (int i = 0; i < MAX_WIN_USABLE / 8; i++) {
+        if (GetBit(RootWindowTreeBitmap, i) == 0) {
+            slot_found = i * 8;
+            break;
         }
     }
 
-    Repaint(winctx);
+    if (slot_found == -1) {
+        return NULL; // No available slot found
+    }
 
-    return winctx;
+    // Mark slot as used
+    SetBit(RootWindowTreeBitmap, slot_found, true);
+
+    // Create and initialize the window
+    Window* window = (Window*)malloc(sizeof(Window));
+    window->____exists__ = true;
+    if (!window) {
+        return NULL;
+    }
+
+    // Copy the title
+    int len_title = 0;
+    while (title[len_title] != 0) {
+        len_title++;
+    }
+
+    for (int i = 0; i < len_title; i++) {
+        window->WinName[i] = title[i];
+    }
+
+    // Allocate framebuffer memory
+    window->winfb = (WindowFramebuffer*)malloc(sizeof(WindowFramebuffer));
+    if (!window->winfb) {
+        free(window);
+        return NULL;
+    }
+    window->winfb->fbaddr = (uint32_t*)malloc(width * height * 4); // Allocate framebuffer
+    if (!window->winfb->fbaddr) {
+        free(window->winfb);
+        free(window);
+        return NULL;
+    }
+    window->winfb->width = width;
+    window->winfb->height = height;
+    window->winfb->dispx = 35;
+    window->winfb->dispy = 35;
+    window->winfb->pitch = width * 4; // Assuming 32-bit color depth
+    window->winfb->bpp = 4;
+
+    // Assign the repaint function
+    window->Repaint = Repaint;
+    window->win_attr = 0;
+
+    // Create and initialize the "EXIT" button
+    Button_t newButton = {
+        "EXIT",
+        FinishWindowProc == NULL ? FinishedWindowProcNone : FinishWindowProc,
+        {window->winfb->dispx + width - 22, window->winfb->dispy},
+        {22, 22},
+        1
+    };
+
+    window->exit_button = &newButton;
+
+    int idx = AddButton(&newButton); // Add the button to the system
+    return window;
 }
 
-void WinPutPx(Window* winctx, uint64_t x, uint64_t y, uint32_t color) {
-    if (winctx == NULL || winctx->winfb == NULL) {
-        return;
+void FreeWindow(Window* window) {
+    if (window) {
+        // Free framebuffer memory
+        if (window->winfb) {
+            if (window->winfb->fbaddr) {
+                free(window->winfb->fbaddr);
+            }
+            free(window->winfb);
+        }
+
+        // Remove the button associated with the window
+        if (window->exit_button) {
+            RemoveButton(window->exit_button->idx);
+        }
+
+        free(window); // Free the window structure
+    }
+}
+
+void Repaint(Window* window) {
+    if (!window || !window->winfb || !window->winfb->fbaddr) return;
+
+    uint64_t startx = window->winfb->dispx;
+    uint64_t starty = window->winfb->dispy;
+    uint64_t width = window->winfb->width;
+    uint64_t height = window->winfb->height;
+    uint64_t pitch = window->winfb->pitch;
+
+    volatile uint32_t* fb = (volatile uint32_t*)window->winfb->fbaddr;
+
+    // Clear the title area
+    for (uint64_t x = startx; x < startx + width; x++) {
+        for (uint64_t y = starty; y < starty + 22; y++) {
+            PutPx(x, y, 0xAAAAAA);
+        }
     }
 
-    if (x >= winctx->winfb->width || y >= winctx->winfb->height) {
-        return;
+    // Draw title text with shadow
+    FontPutStr(window->WinName, startx + 5, starty + 2, 0x000000);
+    FontPutStr(window->WinName, startx + 7, starty + 4, 0x000000);
+    FontPutStr(window->WinName, startx + 7, starty + 2, 0x000000);
+    FontPutStr(window->WinName, startx + 5, starty + 4, 0x000000);
+    FontPutStr(window->WinName, startx + 6, starty + 3, 0xFFFFFF);
+
+    uint64_t cx = startx + width - 11;
+    uint64_t cy = starty + 11;
+    
+    for (uint64_t y = 0; y < 20; y++) {
+        for (uint64_t x = 0; x < 20; x++) {
+            int64_t dx = (int64_t)x - 11;
+            int64_t dy = (int64_t)y - 11;
+            if (dx * dx + dy * dy <= 100) {
+                PutPx(cx - 11 + x, cy - 11 + y, 0xE82828);
+            }
+        }
+    }    
+
+    // Copy content from window framebuffer to screen
+    for (uint64_t y = 0; y < height; y++) {
+        for (uint64_t x = 0; x < width; x++) {
+            uint64_t pxidx = (y * pitch / 4) + x;
+            uint32_t color = fb[pxidx];
+            PutPx(startx + x, starty + 22 + y, color);
+        }
     }
+}
 
-    volatile uint32_t* framebuffer = (volatile uint32_t*)winctx->winfb->address;
+__attribute__((hot)) void WinPutPx(Window* window, uint64_t x, uint64_t y, uint32_t color) {
+    if (!window || !window->winfb || !window->winfb->fbaddr) return;
+    if (x >= window->winfb->width || y >= window->winfb->height) return;
 
-    uint64_t offset = y * (winctx->winfb->pitch / 4) + x;
+    volatile uint32_t* px = (volatile uint32_t*)window->winfb->fbaddr;
+    px += y * (window->winfb->pitch / 4) + x;
+    *px = color;
+}
 
-    framebuffer[offset] = color;
+void WinPutStr(Window* window, uint64_t x, uint64_t y, const char* str, uint32_t color) {
+    uint64_t xoff = x;
+    uint64_t yoff = y;
+
+    uint64_t screenwidthChars = GetFb()->width / 8;
+    uint64_t screenheightChars = GetFb()->height / 16;
+
+    while (*str) {
+        char c = *str;
+
+        if (c == '\b') {
+            if (xoff > x) {
+                xoff -= 8;
+            }
+            DrawRect(xoff, yoff, 8, 16, ClearColor);
+        } else if (c == '\n') {
+            xoff = x;
+            yoff += 16;
+            if (yoff >= GetFb()->height) {
+                yoff = GetFb()->height - 16;
+            }
+        } else if (c == '\r') {
+            xoff = x;
+        } else {
+            if (xoff + 8 > GetFb()->width) {
+                xoff = x;
+                yoff += 16;
+                if (yoff >= GetFb()->height) {
+                    yoff = GetFb()->height - 16;
+                }
+            }
+
+            WinPutChar(window, xoff, yoff, c, color);
+            xoff += 8;
+        }
+
+        str++;
+    }
+}
+
+void WinPutChar(Window* window, uint64_t x, uint64_t y, char c, uint32_t color) {
+    uint8_t* fontPtr = (uint8_t*)main_psf1_font->glyphBuffer + (c * main_psf1_font->psf1_Header->charsize);
+
+    for (uint64_t row = 0; row < main_psf1_font->psf1_Header->charsize; row++) {
+        uint8_t pixelData = fontPtr[row];
+
+        for (uint64_t col = 0; col < 8; col++) {
+            if ((pixelData >> (7 - col)) & 1) {
+                WinPutPx(window, x + col, y + row, color);
+            }
+        }
+    }
 }

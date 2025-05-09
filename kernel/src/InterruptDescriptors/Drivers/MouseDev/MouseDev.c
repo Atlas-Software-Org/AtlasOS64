@@ -24,7 +24,18 @@ Button_t *CreateButton(const char* label, void (*Handler)(), uint64_t x, uint64_
     Buttons[last_btn].Scale.X = sx;
     Buttons[last_btn].Scale.Y = sy;
     Buttons[last_btn].Enabled = 0;
+    Buttons[last_btn].idx = last_btn;
     return &Buttons[last_btn++];
+}
+
+int AddButton(Button_t* btn) {
+    if (last_btn >= 4096) {
+        return -1;
+    }
+    Buttons[last_btn] = *btn;
+    Buttons[last_btn].idx = last_btn;
+    last_btn++;
+    return last_btn-1;
 }
 
 void RemoveButton(int btn_index) {
@@ -36,17 +47,55 @@ void RemoveButton(int btn_index) {
     last_btn--; // Decrease the last button counter
 }
 
+extern RootWindowHandle *RootWindowTree;
+extern uint8_t *RootWindowTreeBitmap;
+extern uint8_t GetBit(uint8_t* map, uint32_t bit_index);
+
+int draggingWin = -1;
+int dragOffsetX = 0;
+int dragOffsetY = 0;
+
+extern void e9debugkf(const char*,...);
+
+void HandleWindowMovementMouse(uint64_t x, uint64_t y) {
+    if (draggingWin == -1) {
+        for (int j = 0; j < 1024; j++) {
+            if (RootWindowTree->WinHandles[j].____exists__ != true) continue;
+
+            int wx = RootWindowTree->WinHandles[j].winfb->dispx;
+            int wy = RootWindowTree->WinHandles[j].winfb->dispy;
+            int ww = RootWindowTree->WinHandles[j].winfb->width;
+
+            if (x >= wx && x < wx + ww && y >= wy && y < wy + 22) {
+                draggingWin = j;
+                dragOffsetX = x - wx;
+                dragOffsetY = y - wy;
+                break;
+            }
+        }
+    }
+
+    if (draggingWin != -1) {
+        RootWindowTree->WinHandles[draggingWin].winfb->dispx = x;
+        RootWindowTree->WinHandles[draggingWin].winfb->dispy = y;
+
+        RootWindowTree->WinHandles[draggingWin].Repaint(&RootWindowTree->WinHandles[draggingWin]);
+    }
+}
+
 void CheckBtns(uint64_t x, uint64_t y) {
     for (int i = 0; i < last_btn; i++) { // Iterate only up to last_btn to avoid unnecessary checks
+        HandleWindowMovementMouse(x, y);
+
         // Dereference Buttons[i] to get the button and check if the point (x, y) is inside the button
         if (x >= Buttons[i].Position.X &&
             x <= (Buttons[i].Position.X + Buttons[i].Scale.X) &&
             y >= Buttons[i].Position.Y &&
             y <= (Buttons[i].Position.Y + Buttons[i].Scale.Y)) {
             
-            /*if (Buttons[i].Enabled == 1) {
+            if (Buttons[i].Enabled == 0) {
                 continue;
-            }*/
+            }
 
             // If the point is inside the button, call its handler
             Buttons[i].Enabled = 0;
@@ -205,6 +254,8 @@ __attribute__((hot)) void ProcessMousePacket() {
 
         if (MousePacket[0] & PS2Leftbutton) {
             CheckBtns(MousePosition.X, MousePosition.Y);
+        } else {
+            draggingWin = -1;
         }
         if (MousePacket[0] & PS2Middlebutton) {
 

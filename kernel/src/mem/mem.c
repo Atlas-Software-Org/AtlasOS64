@@ -72,3 +72,52 @@ uint64_t GetMemorySize(struct limine_memmap_response* mMap) {
 
     return memorySizeBytes;
 }
+
+int strcmp(const char *s1, const char *s2) {
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(unsigned char *)s1 - *(unsigned char *)s2;
+}
+
+char *strcpy(char *dest, const char *src) {
+    char *ret = dest;
+    while ((*dest++ = *src++)) {}
+    return ret;
+}
+
+char *strcat(char *dest, const char *src) {
+    char *ret = dest;
+    while (*dest) dest++;
+    while ((*dest++ = *src++)) {}
+    return ret;
+}
+
+char *strstr(const char *haystack, const char *needle) {
+    if (!*needle) return (char *)haystack;
+    for (; *haystack; haystack++) {
+        const char *h = haystack;
+        const char *n = needle;
+        while (*h && *n && (*h == *n)) {
+            h++;
+            n++;
+        }
+        if (!*n) return (char *)haystack;
+    }
+    return NULL;
+}
+
+char *strchr(const char *s, int c) {
+    while (*s) {
+        if (*s == (char)c) return (char *)s;
+        s++;
+    }
+    return c == 0 ? (char *)s : NULL;
+}
+
+size_t strlen(const char *s) {
+    size_t len = 0;
+    while (*s++) len++;
+    return len;
+}

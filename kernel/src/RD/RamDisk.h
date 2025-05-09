@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RAMDISK_H
+#define RAMDISK_H 1
 
 #include <stddef.h>
 #include <stdint.h>
@@ -52,3 +53,5 @@ int CreateRDDirectory(char DirName[12]);
 
 RamDiskDirectory* FindRDDirectory(char DirName[12]);
 RamDiskDirectory* GetRDRootDirectory();
+
+#endif /* RAMDISK_H */

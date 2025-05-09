@@ -26,7 +26,7 @@
 
 #include <RD/RamDisk.h>
 #include <TTY/AtsTty.h>
-#include <Executables/ElfLoader.h>
+#include <Executables/Apxf.h>
 #include <Notification/notify.h>
 #include <Drivers/ATA/ATA.h>
 #include <Drivers/FAT32/Fat32.h>
@@ -289,32 +289,23 @@ void kmain(void) {
 
     asm volatile("sti");
 
-    InitPaging();
+    Window* window = CreateWindow("Hello, World!\0", 640, 400, NULL);
 
-    DrawRect(0, 0, 512, 512, 0xffff00);
+    for (int i = 0; i < 640; i++) {
+        for (int j = 0; j < 400; j++) {
+            WinPutPx(window, i, j, 0x282828);
+        }
+    }
 
-    extern void jump_usermode(void);
+    for (int i = 0; i < 400; i++) {
+        for (int j = 0; j < 4; j++) {
+            WinPutPx(window, 125+j, i, 0x000000);
+        }
+    }
 
-    //jump_usermode();
+    WinPutStr(window, 2, 2, "Hello!", 0xFFFFFF);
+
+    window->Repaint(window);
 
     hcf();
 }
-
-__attribute__((naked)) void UserMain() {
-}
-/*
-    const char* str = "Hello, World!";
-
-    asm volatile (
-        ".intel_syntax noprefix\n"
-        "mov rax, 3\n"
-        "mov rdi, 0\n"
-        "mov rsi, %0\n"
-        "mov rdx, 13\n"
-        "syscall\n"
-        ".att_syntax prefix\n"
-        :
-        : "r"(str)
-        : "rax", "rdi", "rsi", "rdx"
-    );
-}*/

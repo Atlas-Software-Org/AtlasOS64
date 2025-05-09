@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GPX1_H
+#define GPX1_H 1
 
 #include <stdint.h>
 #include <stddef.h>
@@ -21,14 +22,10 @@ typedef struct _button_t {
     Point Position;
     Point Scale;
     int Enabled;
+    int idx;
 } Button_t;
 
-struct window_t;
-
-typedef void (*RepaintFunc)(struct window_t*);
-
 typedef struct windowfb_t {
-    void* address;
     void* fbaddr;
     uint64_t width;
     uint64_t height;
@@ -38,12 +35,17 @@ typedef struct windowfb_t {
     uint64_t bpp;
 } WindowFramebuffer;
 
+struct window_t;
+
+typedef void (*RepaintFunc)(struct window_t*);
+
 typedef struct window_t {
-    char* WinName;
+    char WinName[17];
     WindowFramebuffer* winfb;
     RepaintFunc Repaint;
     uint8_t win_attr;
-    Button_t exit_button;
+    Button_t *exit_button;
+    bool ____exists__;
 } Window;
 
 #define MAX_WIN_USABLE 1024
@@ -147,12 +149,12 @@ int DisplayTarga(void* ptr, uint64_t size, uint64_t xpos, uint64_t ypos);
 unsigned int *gpx1_parse(unsigned char* ptr, int size);
 int DisplayGraphyx1(void* ptr, uint64_t size, uint64_t xpos, uint64_t ypos);
 
-void WinPutPx(Window* windowctx, uint64_t x, uint64_t y, uint32_t color);
-void WinPutStr(Window* windowctx, uint64_t x, uint64_t y, const char* str, uint32_t color);
-void WinPutChar(Window* windowctx, uint64_t x, uint64_t y, char c, uint32_t color);
+__attribute__((hot)) void WinPutPx(Window* window, uint64_t x, uint64_t y, uint32_t color);
+void WinPutStr(Window* window, uint64_t x, uint64_t y, const char* str, uint32_t color);
+void WinPutChar(Window* window, uint64_t x, uint64_t y, char c, uint32_t color);
 
 Window* CreateWindow(char* title, uint64_t width, uint64_t height, void (*FinishWindowProc));
-void Repaint(Window* window_ctx);
+void Repaint(Window* window);
 
 void ClearMouseCursor(uint8_t* MouseCursor, Point Position);
 void DrawOverlayMouseCursor(uint8_t* MouseCursor, Point Position, uint32_t Colour);
@@ -168,3 +170,5 @@ void DrawLine(int x0, int y0, int x1, int y1, uint32_t color);
 void ArPuts(const char* _s, uint64_t x, uint64_t y, uint32_t clr);
 char* En2Ar(const char* _en_pron, void* out);
 char* UniAr2Ar(const char* _s, void* out);
+
+#endif /* GPX1_H */

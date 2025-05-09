@@ -1,4 +1,5 @@
-#pragma once
+#ifndef LANGUAGE_H
+#define LANGUAGE_H 1
 
 typedef enum {
     ENGLISH = 0,
@@ -12,3 +13,5 @@ LanguageType GetLanguage();
 
 void SetUsername(char* Name);
 char* GetUsername();
+
+#endif /* LANGUAGE_H */

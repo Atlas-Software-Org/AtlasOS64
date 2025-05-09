@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ATA_H
+#define ATA_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -46,3 +47,5 @@ void AtaReadSect(uint32_t lba, uint8_t* buffer);
 void AtaWriteSect(uint32_t lba, uint8_t* buffer);
 
 DiskDriver* InitAtaDriver();
+
+#endif /* ATA_H */

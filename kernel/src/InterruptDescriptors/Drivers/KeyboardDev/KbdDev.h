@@ -1,4 +1,5 @@
-#pragma once
+#ifndef KBDDEV_H
+#define KBDDEV_H 1
 
 #include <InterruptDescriptors/Drivers/PIT/PIT.h>
 #include <mem/mem.h>
@@ -27,3 +28,5 @@ bool IsCtrlSet();
 bool IsShiftSet();
 bool IsAltSet();
 bool IsCapsSet();
+
+#endif /* KBDDEV_H */

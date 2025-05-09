@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PAGING_H
+#define PAGING_H 1
 
 #include <stdint.h>
 #include <stddef.h>
@@ -39,3 +40,5 @@ typedef struct {
 void InitPaging();
 void mmap(uint64_t vaddr, uint64_t paddr, uint64_t flags);
 void umap(uint64_t vaddr);
+
+#endif /* PAGING_H */

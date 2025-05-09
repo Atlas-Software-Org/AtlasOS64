@@ -1,4 +1,5 @@
-#pragma once
+#ifndef IDT_H
+#define IDT_H 1
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -40,3 +41,5 @@ void pic_disable(void);
 
 void IRQ_set_mask(uint8_t IRQline);
 void IRQ_clear_mask(uint8_t IRQline);
+
+#endif /* IDT_H */

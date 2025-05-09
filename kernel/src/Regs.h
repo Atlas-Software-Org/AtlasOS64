@@ -1,4 +1,5 @@
-#pragma once
+#ifndef REGS_H
+#define REGS_H 1
 
 #include <stdint.h>
 
@@ -25,3 +26,5 @@ typedef struct {
 
 void x64WriteRegs(x64Regs *regs);
 void x64ReadRegs(x64Regs *regs);
+
+#endif /* REGS_H */

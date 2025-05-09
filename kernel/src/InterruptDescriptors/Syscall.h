@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SYSCALL_H
+#define SYSCALL_H 1
 
 #include <stddef.h>
 
@@ -201,3 +202,5 @@ pid_t sys_getsid(pid_t pid);
 long syscall_dispatcher(long syscall_num, long arg1, long arg2, long arg3, long arg4, long arg5, long arg6);
 
 void InitSyscall();
+
+#endif /* SYSCALL_H */

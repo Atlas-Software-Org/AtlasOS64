@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SCHED_H
+#define SCHED_H 1
 
 #include <Regs.h>
 #include <memory/paging.h>
@@ -20,3 +21,5 @@ extern Thread threads[8192];
 
 int CreateThread(Thread* thread);
 void Sched_Yield();
+
+#endif /* SCHED_H */

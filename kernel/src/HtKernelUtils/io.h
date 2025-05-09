@@ -1,4 +1,5 @@
-#pragma once
+#ifndef IO_H
+#define IO_H
 
 #include <stdint.h>
 
@@ -26,3 +27,5 @@ void IOWait();
 /* Block Transfer (String I/O) */
 void insw(uint16_t port, void* addr, int count);
 void outsw(uint16_t port, const void* addr, int count);
+
+#endif /* IO_H */
