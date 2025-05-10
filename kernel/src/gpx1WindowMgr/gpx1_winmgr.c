@@ -87,6 +87,7 @@ Window* CreateWindow(char* title, uint64_t width, uint64_t height, void (*Finish
     window->winfb->dispy = 35;
     window->winfb->pitch = width * 4; // Assuming 32-bit color depth
     window->winfb->bpp = 4;
+    window->____isRoot__ = false;
 
     // Assign the repaint function
     window->Repaint = Repaint;
@@ -104,11 +105,61 @@ Window* CreateWindow(char* title, uint64_t width, uint64_t height, void (*Finish
     window->exit_button = &newButton;
 
     int idx = AddButton(&newButton); // Add the button to the system
+
+    RootWindowTree->WinHandles[slot_found] = *window;
+    RootWindowTree->NumUsedWinHandles++;
+
     return window;
 }
 
+Window* CreateRootWindow() {
+    Window* window = (Window*)malloc(sizeof(Window));
+    window->____exists__ = true;
+    window->____isRoot__ = true;
+    if (!window) {
+        return NULL;
+    }
+
+    window->winfb = (WindowFramebuffer*)malloc(sizeof(WindowFramebuffer));
+    if (!window->winfb) {
+        free(window);
+        return NULL;
+    }
+    window->winfb->fbaddr = (uint32_t*)malloc(GetFb()->width * GetFb()->height * 4);
+    if (!window->winfb->fbaddr) {
+        free(window->winfb);
+        free(window);
+        return NULL;
+    }
+    window->winfb->width = GetFb()->width;
+    window->winfb->height = GetFb()->height;
+    window->winfb->dispx = 0;
+    window->winfb->dispy = 0;
+    window->winfb->pitch = GetFb()->width * 4;
+    window->winfb->bpp = 4;
+
+    window->Repaint = Repaint;
+    window->win_attr = 0;
+
+    RootWindowTree->RootWindow = window;
+
+    return window;
+}
+
+static const Window* WindowNull = {
+    0, NULL, NULL, 0, NULL, false
+};
+
 void FreeWindow(Window* window) {
     if (window) {
+        for (int i = 0; i < 1024; i++) {
+            if (RootWindowTree->WinHandles[i].winfb->fbaddr == window->winfb->fbaddr &&
+                RootWindowTree->WinHandles[i].winfb->height == window->winfb->height &&
+                RootWindowTree->WinHandles[i].winfb->width == window->winfb->width
+            ) {
+                RootWindowTree->WinHandles[i] = *WindowNull;
+            }
+        }
         // Free framebuffer memory
         if (window->winfb) {
             if (window->winfb->fbaddr) {
@@ -137,39 +188,51 @@ void Repaint(Window* window) {
 
     volatile uint32_t* fb = (volatile uint32_t*)window->winfb->fbaddr;
 
-    // Clear the title area
-    for (uint64_t x = startx; x < startx + width; x++) {
-        for (uint64_t y = starty; y < starty + 22; y++) {
-            PutPx(x, y, 0xAAAAAA);
+    uint64_t screenw = GetFb()->width;
+    uint64_t screenh = GetFb()->height;
+
+    if (!window->____isRoot__) {
+        for (uint64_t x = startx; x < startx + width; x++) {
+            for (uint64_t y = starty; y < starty + 22; y++) {
+                if (x < screenw && y < screenh) PutPx(x, y, 0xAAAAAA);
+            }
+        }
+
+        if (startx + 7 < screenw && starty + 4 < screenh) {
+            FontPutStr(window->WinName, startx + 5, starty + 2, 0x000000);
+            FontPutStr(window->WinName, startx + 7, starty + 4, 0x000000);
+            FontPutStr(window->WinName, startx + 7, starty + 2, 0x000000);
+            FontPutStr(window->WinName, startx + 5, starty + 4, 0x000000);
+            FontPutStr(window->WinName, startx + 6, starty + 3, 0xFFFFFF);
+        }
+
+        uint64_t cx = startx + width - 11;
+        uint64_t cy = starty + 11;
+
+        for (uint64_t y = 0; y < 20; y++) {
+            for (uint64_t x = 0; x < 20; x++) {
+                int64_t dx = (int64_t)x - 11;
+                int64_t dy = (int64_t)y - 11;
+                if (dx * dx + dy * dy <= 100) {
+                    uint64_t px = cx - 11 + x;
+                    uint64_t py = cy - 11 + y;
+                    if (px < screenw && py < screenh) PutPx(px, py, 0xE82828);
+                }
+            }
         }
     }
 
-    // Draw title text with shadow
-    FontPutStr(window->WinName, startx + 5, starty + 2, 0x000000);
-    FontPutStr(window->WinName, startx + 7, starty + 4, 0x000000);
-    FontPutStr(window->WinName, startx + 7, starty + 2, 0x000000);
-    FontPutStr(window->WinName, startx + 5, starty + 4, 0x000000);
-    FontPutStr(window->WinName, startx + 6, starty + 3, 0xFFFFFF);
+    uint64_t contentStartY = starty + (window->____isRoot__ ? 0 : 22);
 
-    uint64_t cx = startx + width - 11;
-    uint64_t cy = starty + 11;
-    
-    for (uint64_t y = 0; y < 20; y++) {
-        for (uint64_t x = 0; x < 20; x++) {
-            int64_t dx = (int64_t)x - 11;
-            int64_t dy = (int64_t)y - 11;
-            if (dx * dx + dy * dy <= 100) {
-                PutPx(cx - 11 + x, cy - 11 + y, 0xE82828);
-            }
-        }
-    }    
-
-    // Copy content from window framebuffer to screen
     for (uint64_t y = 0; y < height; y++) {
         for (uint64_t x = 0; x < width; x++) {
-            uint64_t pxidx = (y * pitch / 4) + x;
-            uint32_t color = fb[pxidx];
-            PutPx(startx + x, starty + 22 + y, color);
+            uint64_t px = startx + x;
+            uint64_t py = contentStartY + y;
+            if (px < screenw && py < screenh) {
+                uint64_t pxidx = (y * pitch / 4) + x;
+                uint32_t color = fb[pxidx];
+                PutPx(px, py, color);
+            }
         }
     }
 }

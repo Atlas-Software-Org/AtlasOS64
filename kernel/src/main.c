@@ -103,7 +103,7 @@ void kmain(void) {
     struct limine_file *fontFileAr = module_request.response->modules[2]; // ARABIC FONT
     struct limine_file *osCfg = module_request.response->modules[3];    // OS CFG
     struct limine_file *AtlasOS256_LoadImg = module_request.response->modules[4]; // AtlasOS256.bmp - Startup logo    // Retrieve memory map from Limine
-    struct limine_file *elfBin = module_request.response->modules[5];
+    struct limine_file *wallpaper = module_request.response->modules[5]; // Wallpaper
 
     struct limine_memmap_response *LimineMemMapRecv = memmap_request.response;
     SetLmMap(LimineMemMapRecv);
@@ -289,23 +289,35 @@ void kmain(void) {
 
     asm volatile("sti");
 
-    Window* window = CreateWindow("Hello, World!\0", 640, 400, NULL);
+    // Create root window (desktop background);
+    Window* RootWindow = CreateRootWindow();
 
-    for (int i = 0; i < 640; i++) {
-        for (int j = 0; j < 400; j++) {
-            WinPutPx(window, i, j, 0x282828);
+    uint32_t* PixelDataRescaled = getPixelsInSize(wallpaper->address, wallpaper->size);
+
+    for (int x = 0; x < GetFb()->width; x++) {
+        for (int y = 0; y < GetFb()->height; y++) {
+            uint32_t color = PixelDataRescaled[y * GetFb()->pitch + x];
+            WinPutPx(RootWindow, x, y, color);
         }
     }
 
-    for (int i = 0; i < 400; i++) {
-        for (int j = 0; j < 4; j++) {
-            WinPutPx(window, 125+j, i, 0x000000);
+    for (int x = 0; x < 40; x++) {
+        for (int y = 0; y < GetFb()->height; y++) {
+            WinPutPx(RootWindow, x, y, 0x282828);
         }
     }
 
-    WinPutStr(window, 2, 2, "Hello!", 0xFFFFFF);
+    RootWindow->Repaint(RootWindow);
 
-    window->Repaint(window);
+    Window* testWindow = CreateWindow("good window\0", 320, 200, NULL);
+
+    for (int i = 0; i < 320; i++) {
+        for (int j = 0; j < 200; j++) {
+            WinPutPx(testWindow, i, j, (i << 8) | (j << 8) | (i+j << 8));
+        }
+    }
+
+    testWindow->Repaint(testWindow);
 
     hcf();
 }

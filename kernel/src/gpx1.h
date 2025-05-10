@@ -46,6 +46,7 @@ typedef struct window_t {
     uint8_t win_attr;
     Button_t *exit_button;
     bool ____exists__;
+    bool ____isRoot__;
 } Window;
 
 #define MAX_WIN_USABLE 1024
@@ -53,6 +54,7 @@ typedef struct window_t {
 typedef struct root_window_handle {
     int NumUsedWinHandles;
     Window WinHandles[MAX_WIN_USABLE];
+    Window* RootWindow;
 } RootWindowHandle;
 
 #define PSF1_MAGIC0 0x36
@@ -106,6 +108,7 @@ extern Point SelectionBoxStart;
 extern Point SelectionBoxEnd;
 extern bool IsRightBtnPressed;
 
+/* General Graphics */
 void InitGfx(struct limine_framebuffer* fb);
 struct limine_framebuffer *GetFb();
 void PutPx(uint64_t x, uint64_t y, uint32_t clr);
@@ -149,12 +152,16 @@ int DisplayTarga(void* ptr, uint64_t size, uint64_t xpos, uint64_t ypos);
 unsigned int *gpx1_parse(unsigned char* ptr, int size);
 int DisplayGraphyx1(void* ptr, uint64_t size, uint64_t xpos, uint64_t ypos);
 
+/* Window Manager */
 __attribute__((hot)) void WinPutPx(Window* window, uint64_t x, uint64_t y, uint32_t color);
 void WinPutStr(Window* window, uint64_t x, uint64_t y, const char* str, uint32_t color);
 void WinPutChar(Window* window, uint64_t x, uint64_t y, char c, uint32_t color);
 
 Window* CreateWindow(char* title, uint64_t width, uint64_t height, void (*FinishWindowProc));
+Window* CreateRootWindow();
 void Repaint(Window* window);
+void FreeWindow(Window* window);
+/* ^ Window Manager ^ */
 
 void ClearMouseCursor(uint8_t* MouseCursor, Point Position);
 void DrawOverlayMouseCursor(uint8_t* MouseCursor, Point Position, uint32_t Colour);
@@ -170,5 +177,7 @@ void DrawLine(int x0, int y0, int x1, int y1, uint32_t color);
 void ArPuts(const char* _s, uint64_t x, uint64_t y, uint32_t clr);
 char* En2Ar(const char* _en_pron, void* out);
 char* UniAr2Ar(const char* _s, void* out);
+
+uint32_t* getPixelsInSize(void* bmpPtr, size_t fsz);
 
 #endif /* GPX1_H */

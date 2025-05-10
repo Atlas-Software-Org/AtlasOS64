@@ -1,5 +1,6 @@
 #include <gpx1.h>
 #include <mem/mem.h>
+#include <memory/heap.h>
 
 struct limine_framebuffer* main_fb;
 PSF1_FONT* main_psf1_font;
@@ -765,4 +766,85 @@ char* UniAr2Ar(const char* _s, void* out) {
 	}
 
 	return result;
+}
+
+uint32_t* getBmpData(void* ptr, size_t fsz) {
+    if (!ptr || fsz < 54) return NULL;
+
+    uint8_t* bytes = (uint8_t*)ptr;
+
+    // Check if the file is a valid BMP
+    if (bytes[0] != 'B' || bytes[1] != 'M') return NULL;
+
+    uint32_t pixelOffset = *(uint32_t*)&bytes[10];  // Pixel data offset
+    int32_t bmpWidth = *(int32_t*)&bytes[18];       // Image width
+    int32_t bmpHeight = *(int32_t*)&bytes[22];      // Image height
+    uint16_t bpp = *(uint16_t*)&bytes[28];          // Bits per pixel
+
+    // Only handle 24-bit BMP
+    if (bpp != 24 || bmpWidth <= 0 || bmpHeight <= 0) return NULL;
+
+    uint32_t* out = malloc(bmpWidth * bmpHeight * sizeof(uint32_t));
+    if (!out) return NULL;
+
+    uint8_t* pixelData = bytes + pixelOffset;
+    uint32_t stride = ((bmpWidth * 3 + 3) & ~3); // Padding to 4-byte boundaries
+
+    for (int32_t y = 0; y < bmpHeight; y++) {
+        for (int32_t x = 0; x < bmpWidth; x++) {
+            uint8_t* px = &pixelData[(bmpHeight - 1 - y) * stride + x * 3];
+            uint8_t b = px[0];
+            uint8_t g = px[1];
+            uint8_t r = px[2];
+            out[y * bmpWidth + x] = (r << 16) | (g << 8) | b; // Store as 0x00RRGGBB
+        }
+    }
+
+    return out;
+}
+
+uint32_t* getPixelsInSize(void* bmpPtr, size_t fsz) {
+    if (!bmpPtr) return NULL;
+
+    uint32_t* bmpData = getBmpData(bmpPtr, fsz);
+    if (!bmpData) return NULL;
+
+    // Get framebuffer width and height from GetFb()
+    uint64_t fbWidth = GetFb()->width;
+    uint64_t fbHeight = GetFb()->height*4;
+
+    // Get the original dimensions of the BMP
+    int32_t bmpWidth = *(int32_t*)&((uint8_t*)bmpPtr)[18];
+    int32_t bmpHeight = *(int32_t*)&((uint8_t*)bmpPtr)[22];
+
+    // Allocate memory for the resized image
+    uint32_t* resizedData = malloc(fbWidth * fbHeight * sizeof(uint32_t));
+    if (!resizedData) {
+        free(bmpData);
+        return NULL;
+    }
+
+    // Calculate scaling factors for X and Y
+    uint64_t scaleX = (bmpWidth * 256) / fbWidth;  // Scaling factor for X
+    uint64_t scaleY = (bmpHeight * 256) / fbHeight;  // Scaling factor for Y
+
+    // Perform nearest neighbor rescaling
+    for (uint64_t y = 0; y < fbHeight; y++) {
+        for (uint64_t x = 0; x < fbWidth; x++) {
+            // Find the corresponding pixel in the original image using scaling factors
+            uint64_t srcX = (x * scaleX) >> 8;  // Right shift to get the actual pixel coordinate
+            uint64_t srcY = (y * scaleY) >> 8;  // Right shift to get the actual pixel coordinate
+
+            // Ensure srcX and srcY are within bounds of the original image
+            if (srcX >= bmpWidth) srcX = bmpWidth - 1;
+            if (srcY >= bmpHeight) srcY = bmpHeight - 1;
+
+            // Calculate the pixel index in the original image
+            uint64_t srcIdx = srcY * bmpWidth + srcX;
+            resizedData[y * fbWidth + x] = bmpData[srcIdx];
+        }
+    }
+
+    free(bmpData);  // Free the original BMP data after resizing
+    return resizedData;
 }

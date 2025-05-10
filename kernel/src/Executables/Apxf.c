@@ -106,7 +106,7 @@ int ExecApxf(void *ptr) {
     // Execution loop
     outb(0xE9, 't');
     while (1) {
-        uint8_t opcode = code[IEP++];
+        uint8_t opcode = code[IEP];
         const InstrDef def = instr_table[opcode];
         uint64_t imm = 0;
         if (def.has_imm) {

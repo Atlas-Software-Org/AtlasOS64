@@ -47,47 +47,82 @@ void RemoveButton(int btn_index) {
     last_btn--; // Decrease the last button counter
 }
 
-extern RootWindowHandle *RootWindowTree;
-extern uint8_t *RootWindowTreeBitmap;
-extern uint8_t GetBit(uint8_t* map, uint32_t bit_index);
-
-int draggingWin = -1;
-int dragOffsetX = 0;
-int dragOffsetY = 0;
-
+extern RootWindowHandle* RootWindowTree;
 extern void e9debugkf(const char*,...);
 
-void HandleWindowMovementMouse(uint64_t x, uint64_t y) {
-    if (draggingWin == -1) {
-        for (int j = 0; j < 1024; j++) {
-            if (RootWindowTree->WinHandles[j].____exists__ != true) continue;
+static int holdingWin = -1;  // Holds the index of the window being dragged
+static int wasHeld = -1;  // Indicates whether a window was held (dragged)
 
-            int wx = RootWindowTree->WinHandles[j].winfb->dispx;
-            int wy = RootWindowTree->WinHandles[j].winfb->dispy;
-            int ww = RootWindowTree->WinHandles[j].winfb->width;
+void HandleMouseDown(uint64_t x, uint64_t y) {
+    if (RootWindowTree == NULL) return;
 
-            if (x >= wx && x < wx + ww && y >= wy && y < wy + 22) {
-                draggingWin = j;
-                dragOffsetX = x - wx;
-                dragOffsetY = y - wy;
-                break;
-            }
+    for (int i = 0; i < 1024; i++) {
+        if (RootWindowTree->WinHandles[i].winfb == NULL) continue;
+
+        // Check if the mouse click is inside the window's title bar (assuming 22px height for title bar)
+        if (x >= RootWindowTree->WinHandles[i].winfb->dispx && x <= RootWindowTree->WinHandles[i].winfb->dispx + RootWindowTree->WinHandles[i].winfb->width &&
+            y >= RootWindowTree->WinHandles[i].winfb->dispy && y <= RootWindowTree->WinHandles[i].winfb->dispy + 22) {
+            
+            holdingWin = i;
+            wasHeld = 1;
+            return;
         }
-    }
-
-    if (draggingWin != -1) {
-        RootWindowTree->WinHandles[draggingWin].winfb->dispx = x;
-        RootWindowTree->WinHandles[draggingWin].winfb->dispy = y;
-
-        RootWindowTree->WinHandles[draggingWin].Repaint(&RootWindowTree->WinHandles[draggingWin]);
     }
 }
 
+void HandleMouseUp(uint64_t x, uint64_t y) {
+    if (wasHeld != -1) {
+        
+        int windowIndex = holdingWin;
+        if (RootWindowTree->WinHandles[windowIndex].winfb != NULL) {
+            ClearScreenColor(0x000000);
+
+            if (RootWindowTree->WinHandles[windowIndex].Repaint != NULL) {
+                RootWindowTree->RootWindow->Repaint(RootWindowTree->RootWindow);
+                for (int i = 0; i < 1024; i++) {
+                    if (RootWindowTree->WinHandles[i].____exists__ == true) {
+                        RootWindowTree->WinHandles[i].Repaint(&RootWindowTree->WinHandles[i]);
+                    }
+                }
+                RootWindowTree->WinHandles[windowIndex].Repaint(&RootWindowTree->WinHandles[windowIndex]); // to make sure selected window is on top
+            } else {
+            }
+        }
+
+        wasHeld = -1;
+        holdingWin = -1;
+    }
+}
+
+void HandleWindowMovementMouse(uint64_t x, uint64_t y) {
+    if (RootWindowTree == NULL || holdingWin == -1) {
+        return;
+    }
+
+    int windowIndex = holdingWin;
+    if (RootWindowTree->WinHandles[windowIndex].winfb == NULL) return;
+
+    uint64_t newX = x;
+    uint64_t newY = y;
+
+    if (newX + RootWindowTree->WinHandles[windowIndex].winfb->width > GetFb()->width || 
+        newY + RootWindowTree->WinHandles[windowIndex].winfb->height > GetFb()->height ||
+        newX < 0 || newY < 0) {
+        return;
+    }
+
+    if (newX + RootWindowTree->WinHandles[windowIndex].winfb->width > GetFb()->width) goto end;
+    if (newY + RootWindowTree->WinHandles[windowIndex].winfb->height > GetFb()->height) goto end;
+
+    RootWindowTree->WinHandles[windowIndex].winfb->dispx = newX;
+    RootWindowTree->WinHandles[windowIndex].winfb->dispy = newY;
+    end:
+}
+
 void CheckBtns(uint64_t x, uint64_t y) {
-    for (int i = 0; i < last_btn; i++) { // Iterate only up to last_btn to avoid unnecessary checks
+    for (int i = 0; i < last_btn; i++) {
         HandleWindowMovementMouse(x, y);
 
-        // Dereference Buttons[i] to get the button and check if the point (x, y) is inside the button
         if (x >= Buttons[i].Position.X &&
             x <= (Buttons[i].Position.X + Buttons[i].Scale.X) &&
             y >= Buttons[i].Position.Y &&
@@ -97,7 +132,6 @@ void CheckBtns(uint64_t x, uint64_t y) {
                 continue;
             }
 
-            // If the point is inside the button, call its handler
             Buttons[i].Enabled = 0;
             Buttons[i].Handler();
             Buttons[i].Enabled = 1;
@@ -197,89 +231,89 @@ void HandlePS2Mouse(uint8_t data) {
 __attribute__((hot)) void ProcessMousePacket() {
     if (!MousePacketReady) return;
 
-        bool xNegative, yNegative, xOverflow, yOverflow;
+    bool xNegative, yNegative, xOverflow, yOverflow;
 
-        if (MousePacket[0] & PS2XSign) {
-            xNegative = true;
-        }else xNegative = false;
+    if (MousePacket[0] & PS2XSign) {
+        xNegative = true;
+    } else xNegative = false;
 
-        if (MousePacket[0] & PS2YSign) {
-            yNegative = true;
-        }else yNegative = false;
+    if (MousePacket[0] & PS2YSign) {
+        yNegative = true;
+    } else yNegative = false;
 
-        if (MousePacket[0] & PS2XOverflow) {
-            xOverflow = true;
-        }else xOverflow = false;
+    if (MousePacket[0] & PS2XOverflow) {
+        xOverflow = true;
+    } else xOverflow = false;
 
-        if (MousePacket[0] & PS2YOverflow) {
-            yOverflow = true;
-        }else yOverflow = false;
+    if (MousePacket[0] & PS2YOverflow) {
+        yOverflow = true;
+    } else yOverflow = false;
 
-        if (!xNegative) {
-            MousePosition.X += MousePacket[1];
-            if (xOverflow) {
-                MousePosition.X += 255;
-            }
-        } else
-        {
-            MousePacket[1] = 256 - MousePacket[1];
-            MousePosition.X -= MousePacket[1];
-            if (xOverflow) {
+    if (!xNegative) {
+        MousePosition.X += MousePacket[1];
+        if (xOverflow) {
+            MousePosition.X += 255;
+        }
+    } else {
+        MousePacket[1] = 256 - MousePacket[1];
+        MousePosition.X -= MousePacket[1];
+        if (xOverflow) {
                 MousePosition.X -= 255;
-            }
         }
+    }
 
-        if (!yNegative) {
-            MousePosition.Y -= MousePacket[2];
-            if (yOverflow) {
-                MousePosition.Y -= 255;
-            }
-        } else
-        {
-            MousePacket[2] = 256 - MousePacket[2];
-            MousePosition.Y += MousePacket[2];
-            if (yOverflow) {
-                MousePosition.Y += 255;
-            }
+    if (!yNegative) {
+        MousePosition.Y -= MousePacket[2];
+        if (yOverflow) {
+            MousePosition.Y -= 255;
         }
+    } else {
+        MousePacket[2] = 256 - MousePacket[2];
+        MousePosition.Y += MousePacket[2];
+        if (yOverflow) {
+            MousePosition.Y += 255;
+        }
+    }
 
-        if (MousePosition.X <= 1) MousePosition.X = 1;
-        if (MousePosition.X >= GetFb()->width-1) MousePosition.X = GetFb()->width-1;
+    if (MousePosition.X <= 1) MousePosition.X = 1;
+    if (MousePosition.X >= GetFb()->width-1) MousePosition.X = GetFb()->width-1;
         
-        if (MousePosition.Y <= 1) MousePosition.Y = 1;
-        if (MousePosition.Y >= GetFb()->height-1) MousePosition.Y = GetFb()->height-1;
+    if (MousePosition.Y <= 1) MousePosition.Y = 1;
+    if (MousePosition.Y >= GetFb()->height-1) MousePosition.Y = GetFb()->height-1;
         
-        ClearMouseCursor(MousePointer, MousePositionOld);
-        DrawOverlayMouseCursor(MousePointer, MousePosition, 0xffffffff);
+    ClearMouseCursor(MousePointer, MousePositionOld);
+    DrawOverlayMouseCursor(MousePointer, MousePosition, 0xffffffff);
 
-        if (MousePacket[0] & PS2Leftbutton) {
-            CheckBtns(MousePosition.X, MousePosition.Y);
-        } else {
-            draggingWin = -1;
-        }
-        if (MousePacket[0] & PS2Middlebutton) {
+    if (MousePacket[0] & PS2Leftbutton) {
+        HandleMouseDown(MousePosition.X, MousePosition.Y);
+        CheckBtns(MousePosition.X, MousePosition.Y);
+    } else {
+        HandleMouseUp(MousePosition.X, MousePosition.Y);
+        holdingWin = 0;
+    }
+    if (MousePacket[0] & PS2Middlebutton) {
 
-        }
-        if (MousePacket[0] & PS2Rightbutton) {
+    }
+    if (MousePacket[0] & PS2Rightbutton) {
 
-        }
+    }
 
-        MousePacketReady = false;
-        MousePositionOld = MousePosition;
+    MousePacketReady = false;
+    MousePositionOld = MousePosition;
 }
 
 void InitPS2Mouse() {
-    outb(0x64, 0xA8); //enabling the auxiliary device - mouse
+    outb(0x64, 0xA8);
 
     MouseWait();
-    outb(0x64, 0x20); //tells the keyboard controller that we want to send a command to the mouse
+    outb(0x64, 0x20);
     MouseWaitInput();
     uint8_t status = inb(0x60);
     status |= 0b10;
     MouseWait();
     outb(0x64, 0x60);
     MouseWait();
-    outb(0x60, status); // setting the correct bit is the "compaq" status byte
+    outb(0x60, status);
 
     MouseWrite(0xF6);
     MouseRead();

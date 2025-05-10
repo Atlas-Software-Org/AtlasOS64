@@ -47,6 +47,12 @@
         "cstdint": "c",
         "*.temp": "c",
         "coroutine": "c",
-        "limine.h": "c"
+        "limine.h": "c",
+        "compare": "c",
+        "condition_variable": "c",
+        "future": "c",
+        "random": "c",
+        "charconv": "c",
+        "system_error": "c"
     }
 }

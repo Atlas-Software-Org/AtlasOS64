@@ -177,7 +177,7 @@ $(IMAGE_NAME).iso: limine/limine kernel
 	cp -v kernel/a_depends/Arabic.psf iso_root/boot/sys64/fonts/Arabic.psf
 	cp -v kernel/a_depends/kern64.config iso_root/boot/sys64/kern64.config
 	cp -v kernel/a_depends/AtlasOS256.bmp iso_root/boot/sys64/AtlasOS256.bmp
-	cp -v kernel/a_depends/elfbin iso_root/boot/sys64/elfbin
+	cp -v kernel/a_depends/wallpaper.bmp iso_root/boot/sys64/wallpaper.bmp
 	mkdir -p iso_root/boot/limine
 	cp -v limine.conf iso_root/boot/limine/
 	mkdir -p iso_root/EFI/BOOT
