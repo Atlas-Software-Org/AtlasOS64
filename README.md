@@ -1,5 +1,5 @@
 # AtlasOS64
-Currently at version 0.0.7 (REWRITE) Atlas supports a functional bitmap allocator ({SRC}/PMM/pmm.c), a simple log interface, support for flanterm natively, cleaner code than the older versions, full support for printk ([A printf / sprintf Implementation for Embedded Systems](https://github.com/mpaland/printf), and we are planning to add more features, such as full ELF support.
+Currently at version 0.0.7 (REWRITE) Atlas supports a functional bitmap allocator ({SRC}/PMM/pmm.c), a simple log interface, support for flanterm natively, cleaner code than the older versions, full support for printk [A printf / sprintf Implementation for Embedded Systems](https://github.com/mpaland/printf), and we are planning to add more features, such as full ELF support.
 
 # How to configure the OS before compilation?
 
