@@ -1,31 +1,42 @@
-# Limine C++ Template
+# AtlasOS64
+Currently at version 0.0.7 (REWRITE) Atlas supports a functional bitmap allocator ({SRC}/PMM/pmm.c), a simple log interface, support for flanterm natively, cleaner code than the older versions, full support for printk [A printf / sprintf Implementation for Embedded Systems](https://github.com/mpaland/printf), and we are planning to add more features, such as full ELF support.
 
-This repository will demonstrate how to set up a basic kernel in C++ using Limine.
+# How to configure the OS before compilation?
 
-## How to use this?
+To configure Atlas before compilation you need to execute the shell script `configure` in the root directory of the OS workspace:
+```bash
+./configure
+```
 
-### Dependencies
+After you configure Atlas you need to check for ftctx_setup.c using:
+```bash
+ls -lh ./kernel/src/flanterm/ftctx_setup.c
+```
 
-Any `make` command depends on GNU make (`gmake`) and is expected to be run using it. This usually means using `make` on most GNU/Linux distros, or `gmake` on other non-GNU systems.
+If the file exists then you can proceed to compile and run Atlas using the following command:
+```bash
+make run
+```
 
-It is recommended to build this project using a standard UNIX-like system, using a Clang/LLVM toolchain capable of cross compilation.
+If the file doesnt exist you need to create it using:
+```bash
+touch ./kernel/src/flanterm/ftctx_setup.c
+```
+Then you need to put this code in it:
+```c
+#include "flanterm.h"
 
-Additionally, building an ISO with `make all` requires `xorriso`, and building a HDD/USB image with `make all-hdd` requires `sgdisk` (usually from `gdisk` or `gptfdisk` packages) and `mtools`.
+struct flanterm_context* global_ft_ctx;
 
-### Architectural targets
+void SetGlobalFtCtx(struct flanterm_context *ctx) {
+    global_ft_ctx = ctx;
+}
 
-The `ARCH` make variable determines the target architecture to build the kernel and image for.
+struct flanterm_context *GetGlobalFtCtx() {
+    return global_ft_ctx;
+}
+```
 
-The default `ARCH` is `x86_64`. Other options include: `aarch64`, `loongarch64`, and `riscv64`.
+Voila Atlas is prepared for compilation (with ftctx_setup.c prepared manually), you can run it with the same command as written above
 
-### Makefile targets
-
-Running `make all` will compile the kernel (from the `kernel/` directory) and then generate a bootable ISO image.
-
-Running `make all-hdd` will compile the kernel and then generate a raw image suitable to be flashed onto a USB stick or hard drive/SSD.
-
-Running `make run` will build the kernel and a bootable ISO (equivalent to make all) and then run it using `qemu` (if installed).
-
-Running `make run-hdd` will build the kernel and a raw HDD image (equivalent to make all-hdd) and then run it using `qemu` (if installed).
-
-For x86_64, the `run-bios` and `run-hdd-bios` targets are equivalent to their non `-bios` counterparts except that they boot `qemu` using the default SeaBIOS firmware instead of OVMF.
+# Atlas Software & Microsystems
