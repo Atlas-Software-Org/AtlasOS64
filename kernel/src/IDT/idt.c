@@ -40,6 +40,18 @@ void KiIdtSetDesc(uint8_t vector, void* isr, uint8_t flags) {
     descriptor->isr_mid        = ((uint64_t)isr >> 16) & 0xFFFF;
     descriptor->isr_high       = ((uint64_t)isr >> 32) & 0xFFFFFFFF;
     descriptor->reserved       = 0;
+
+    printk("\x1B[92m{ LOG }\tCreated IDT descriptor:\n\r"
+        "34: idt_entry_t* descriptor = &idt[0x%x];\n\r"
+        "36: descriptor->isr_low = (uint64_t)0x%p & 0xFFFF;\n\r"
+        "37: descriptor->kernel_cs = 0x%x; /* 0x08 */\n\r"
+        "38: descriptor->ist = 0;\n\r"
+        "39: descriptor->attributes = 0x%x;\n\r"
+        "40: descriptor->isr_mid = ((uint64_t)0x%p >> 16) & 0xFFFF;\n\r"
+        "41: descriptor->isr_high = ((uint64_t)0x%p >> 32) & 0xFFFFFFFF;\n\r"
+        "42: descriptor->reserved = 0;\n\r\x1B[0m",
+        vector, isr, GDT_OFFSET_KERNEL_CODE, flags, isr, isr
+    );
 }
 
 static bool vectors[IDT_MAX_DESCRIPTORS];
@@ -53,6 +65,20 @@ void KiInitExceptions() {
     }
 }
 
+__attribute__((interrupt)) void KiKeyboardHandler(int* __unused) {
+    uint8_t sc = inb(0x60);
+    if (!(sc & 0x80))
+        KeyboardDriverMain(sc);
+    KiPicSendEoi(1);
+    outb(0x20, 0x20);
+}
+
+void KeyboardFlushBuffer() {
+    while (inb(0x64) & 1) {
+        volatile uint8_t discard = inb(0x60);
+    }
+}
+
 idtr_t KiIdtInit() {
     idtr.base = (uintptr_t)&idt[0];
     idtr.limit = (uint16_t)(sizeof(idt_entry_t) * IDT_MAX_DESCRIPTORS - 1);
@@ -61,19 +87,23 @@ idtr_t KiIdtInit() {
 
     KiPicRemap(0x20, 0x28);
 
-    KiIdtSetDesc(0x21, (void*)&KeyboardDriverMain, 0x8E);
+    KiIdtSetDesc(0x21, (void*)&KiKeyboardHandler, 0x8E);
 
-    printk("{ LOG }\tDBG: Keyboard handler address: %lx\n\r", (void*)&KeyboardDriverMain);
+    printk("{ LOG }\tDBG: Keyboard handler address: %lx\n\r", (void*)&KiKeyboardHandler);
 
     outb(PIC1_DATA, 0b11111101);
     outb(PIC2_DATA, 0b11111111);
     KiIrqClearMask(1);
 
-    outb(0xE9, 'a');
+    asm volatile ("cli");
+
     __asm__ volatile ("lidt %0" : : "m"(idtr));
-    outb(0xE9, 'b');
 
     printk("{ LOG }\tLoaded IDT...\n\r");
+
+    asm volatile ("sti");
+
+    KeyboardFlushBuffer();
 
     return idtr;
 }

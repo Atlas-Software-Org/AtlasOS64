@@ -6,6 +6,6 @@ void DeinitKeyboardDriver();
 static void KbdPushback(char c);
 static void KbdNAFPushback(char c);
 
-void __attribute__((interrupt)) KeyboardDriverMain(int *__unused);
+void KeyboardDriverMain(uint8_t sc);
 
 #endif /* PS2KEYBOARD_H */

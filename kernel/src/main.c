@@ -192,5 +192,9 @@ void KiStartupInit(void) {
 
     InitKeyboardDriver();
 
+    while (1) {
+        asm volatile ("int $0x21");
+    }
+
     hcf();
 }
