@@ -1,3 +1,7 @@
+/*
+        No Author - main.c
+*/
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -9,7 +13,9 @@
 
 #include <GDT/gdt.h>
 #include <IDT/idt.h>
+#include <Syscalls/Syscalls.h>
 #include <PMM/pmm.h>
+#include <Paging/paging.h>
 
 #include <Drivers/PS2Keyboard.h>
 
@@ -37,57 +43,6 @@ static volatile LIMINE_REQUESTS_START_MARKER;
 
 __attribute__((used, section(".limine_requests_end")))
 static volatile LIMINE_REQUESTS_END_MARKER;
-
-void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
-    uint8_t *restrict pdest = (uint8_t *restrict)dest;
-    const uint8_t *restrict psrc = (const uint8_t *restrict)src;
-
-    for (size_t i = 0; i < n; i++) {
-        pdest[i] = psrc[i];
-    }
-
-    return dest;
-}
-
-void *memset(void *s, int c, size_t n) {
-    uint8_t *p = (uint8_t *)s;
-
-    for (size_t i = 0; i < n; i++) {
-        p[i] = (uint8_t)c;
-    }
-
-    return s;
-}
-
-void *memmove(void *dest, const void *src, size_t n) {
-    uint8_t *pdest = (uint8_t *)dest;
-    const uint8_t *psrc = (const uint8_t *)src;
-
-    if (src > dest) {
-        for (size_t i = 0; i < n; i++) {
-            pdest[i] = psrc[i];
-        }
-    } else if (src < dest) {
-        for (size_t i = n; i > 0; i--) {
-            pdest[i-1] = psrc[i-1];
-        }
-    }
-
-    return dest;
-}
-
-int memcmp(const void *s1, const void *s2, size_t n) {
-    const uint8_t *p1 = (const uint8_t *)s1;
-    const uint8_t *p2 = (const uint8_t *)s2;
-
-    for (size_t i = 0; i < n; i++) {
-        if (p1[i] != p2[i]) {
-            return p1[i] < p2[i] ? -1 : 1;
-        }
-    }
-
-    return 0;
-}
 
 static void hcf(void) {
     for (;;) {
@@ -176,13 +131,13 @@ void KiStartupInit(void) {
     printk("{ LOG }\tPMM initialized: total pages = %zu, free pages = %zu\n",
            KiPmmGetTotalPages(), KiPmmGetFreePages());
 
-    int64_t frame = KiPmmAlloc();
+    void* frame = KiPmmAlloc();
     if (frame == -1) {
         printk("{ LOG }\tFailed to allocate a page\n");
         hcf();
     }
 
-    printk("{ LOG }\tAllocated page frame: %lld\n", frame);
+    printk("{ LOG }\tAllocated page frame: %p\n", frame);
     printk("{ LOG }\tFree pages after allocation: %zu\n", KiPmmGetFreePages());
 
     KiPmmFree((size_t)frame);
@@ -190,11 +145,7 @@ void KiStartupInit(void) {
     printk("{ LOG }\tFree pages after free: %zu\n", KiPmmGetFreePages());
     /* PMM TESTS END */
 
-    InitKeyboardDriver();
-
-    while (1) {
-        asm volatile ("int $0x21");
-    }
+    printk("Test suceeded...\n\r");
 
     hcf();
 }

@@ -1,59 +1,105 @@
+/*
+    Author: Adam Bassem
+    Revision 0
+    Patch 0
+    Minor 0
+    Major 0
+    Atlas 0.0.7
+*/
+
 #include "paging.h"
 
-#define PAGE_PRESENT   (1ULL << 0)
-#define PAGE_RW        (1ULL << 1)
-#define PAGE_PS        (1ULL << 7)
+__attribute__((aligned(0x1000))) PageTable __pml4_ins;
 
-#define PAGE_ENTRIES 512
-#define PAGE_SIZE_2MB (2 * 1024 * 1024)
+static PageTable *Pml4 = &__pml4_ins;
+uint64_t HhdmBase = 0;
 
-// Adjust this for your HHDM base address
-#define HHDM_BASE 0xFFFF800000000000ULL
+uint64_t KiRetrievePml4() {
+    return (uint64_t)(uintptr_t)Pml4;
+}
 
-typedef uint64_t pte_t;
+static int index = 0;
 
-typedef struct __attribute__((packed, aligned(4096))) {
-    pte_t entries[PAGE_ENTRIES];
-} page_table_t;
+void d() {
+    printk("Debug log index %d\n\r", index++);
+}
 
-static page_table_t pml4;
-static page_table_t pdpt_identity;
-static page_table_t pd_identity;
-static page_table_t pdpt_hhdm;
-static page_table_t pd_hhdm;
+void* phys_to_virt(uint64_t phys) {
+    return (void*)(phys - 0 + HhdmBase);
+}
 
-pte_t* KiPml4Init() {
-    // Zero all tables
-    for (int i = 0; i < PAGE_ENTRIES; i++) {
-        pml4.entries[i] = 0;
-        pdpt_identity.entries[i] = 0;
-        pd_identity.entries[i] = 0;
-        pdpt_hhdm.entries[i] = 0;
-        pd_hhdm.entries[i] = 0;
+bool MapPage(void* phys, void* virt) {
+    const uint64_t physical_address = (uint64_t)phys;
+    const uint64_t virtual_address = (uint64_t)virt;
+    const int Flags = PAGE_PRESENT | PAGE_READWRITE | PAGE_USER;
+
+    uint64_t Pml4Index = (virtual_address >> 39) & 0x1FF;
+    uint64_t PdptIndex = (virtual_address >> 30) & 0x1FF;
+    uint64_t PdtIndex = (virtual_address >> 21) & 0x1FF;
+    uint64_t PtIndex = (virtual_address >> 12) & 0x1FF;
+
+    if (!(Pml4->entries[Pml4Index] & PAGE_PRESENT)) {
+        void* PdptAddr = KiPmmAlloc();
+        if ((uintptr_t)PdptAddr & 0xFFF) return false; // Must be aligned
+        memset(PdptAddr, 0, sizeof(PageTable));
+        Pml4->entries[Pml4Index] = (uint64_t)(uintptr_t)PdptAddr | Flags;
     }
 
-    // Map 512 entries in PD = 512 * 2MiB = 1GiB identity + HHDM mapping
-
-    // Setup PD identity 2MB pages: physical 0 to 1GiB
-    for (int i = 0; i < PAGE_ENTRIES; i++) {
-        uint64_t phys_addr = i * PAGE_SIZE_2MB;
-        pd_identity.entries[i] = phys_addr | PAGE_PRESENT | PAGE_RW | PAGE_PS;
-        pd_hhdm.entries[i] = phys_addr | PAGE_PRESENT | PAGE_RW | PAGE_PS;
+    d();
+    PageTable* Pdpt = (PageTable*)phys_to_virt(Pml4->entries[Pml4Index] & PHYS_PAGE_ADDR_MASK);
+    d();
+    if (!(Pdpt->entries[PdptIndex] & PAGE_PRESENT)) {
+        void* PdtAddr = KiPmmAlloc();
+        if ((uintptr_t)PdtAddr & 0xFFF) return false;
+        memset(PdtAddr, 0, sizeof(PageTable));
+        Pdpt->entries[PdptIndex] = (uint64_t)(uintptr_t)PdtAddr | Flags;
     }
+    d();
 
-    // Setup PDPT identity and hhdm pointing to PDs
-    pdpt_identity.entries[0] = ((uint64_t)&pd_identity) | PAGE_PRESENT | PAGE_RW;
-    pdpt_hhdm.entries[0] = ((uint64_t)&pd_hhdm) | PAGE_PRESENT | PAGE_RW;
+    d();
+    PageTable* Pdt = (PageTable*)((uintptr_t)(Pdpt->entries[PdptIndex] & PHYS_PAGE_ADDR_MASK));
+    d();
+    if (!(Pdt->entries[PdtIndex] & PAGE_PRESENT)) {
+        void* PtAddr = KiPmmAlloc();
+        if ((uintptr_t)PtAddr & 0xFFF) return false;
+        memset(PtAddr, 0, sizeof(PageTable));
+        Pdt->entries[PdtIndex] = (uint64_t)(uintptr_t)PtAddr | Flags;
+    }
+    d();
 
-    // Setup PML4 entries:
-    // Identity map in PML4 index 0
-    pml4.entries[0] = ((uint64_t)&pdpt_identity) | PAGE_PRESENT | PAGE_RW;
+    d();
+    PageTable* Pt = (PageTable*)((uintptr_t)(Pdt->entries[PdtIndex] & PHYS_PAGE_ADDR_MASK));
+    d();
+    Pt->entries[PtIndex] = (physical_address & PHYS_PAGE_ADDR_MASK) | Flags;
+    d();
 
-    // HHDM map in PML4 index for HHDM_BASE
-    size_t pml4_index_hhdm = (HHDM_BASE >> 39) & 0x1FF;
-    pml4.entries[pml4_index_hhdm] = ((uint64_t)&pdpt_hhdm) | PAGE_PRESENT | PAGE_RW;
+    d();
+    asm volatile ("invlpg (%0)" : : "r"(virtual_address));
+    d();
 
-    printk("{ LOG }\tPHYS CR3: %lX / VIRT CR3: %lX\n\r", *(pte_t*)&pml4, *(uint64_t*)&pml4-0xFFFF800000000000);
+    d();
+    return true;
+}
 
-    return (pte_t*)&pml4;
+void UnmapPage(void* phys, void* virt) {
+    (void)phys;
+    const uint64_t virtual_address = (uint64_t)virt;
+
+    uint64_t Pml4Index = (virtual_address >> 39) & 0x1FF;
+    uint64_t PdptIndex = (virtual_address >> 30) & 0x1FF;
+    uint64_t PdtIndex = (virtual_address >> 21) & 0x1FF;
+    uint64_t PtIndex = (virtual_address >> 12) & 0x1FF;
+
+    if (!(Pml4->entries[Pml4Index] & PAGE_PRESENT)) return;
+
+    PageTable* Pdpt = (PageTable*)((uintptr_t)(Pml4->entries[Pml4Index] & PHYS_PAGE_ADDR_MASK));
+    if (!(Pdpt->entries[PdptIndex] & PAGE_PRESENT)) return;
+
+    PageTable* Pdt = (PageTable*)((uintptr_t)(Pdpt->entries[PdptIndex] & PHYS_PAGE_ADDR_MASK));
+    if (!(Pdt->entries[PdtIndex] & PAGE_PRESENT)) return;
+
+    PageTable* Pt = (PageTable*)((uintptr_t)(Pdt->entries[PdtIndex] & PHYS_PAGE_ADDR_MASK));
+    Pt->entries[PtIndex] = 0;
+
+    asm volatile ("invlpg (%0)" : : "r"(virtual_address));
 }

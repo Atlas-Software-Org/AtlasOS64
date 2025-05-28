@@ -2,6 +2,9 @@
     "files.associations": {
         "compare": "c",
         "cstdint": "c",
-        "format": "c"
+        "format": "c",
+        "random": "c",
+        "idt.h": "c",
+        "ranges": "c"
     }
 }

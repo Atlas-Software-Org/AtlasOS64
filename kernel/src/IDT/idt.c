@@ -1,3 +1,12 @@
+/*
+    Author: Adam Bassem
+    Revision 0
+    Patch 0
+    Minor 0
+    Major 0
+    Atlas 0.0.7
+*/
+
 #include "idt.h"
 
 typedef struct {
@@ -22,6 +31,17 @@ char error_codes[32][128] = {
 };
 
 void KiExceptionHandler(int exception) {
+    if (exception == 0) {
+        printk("\x1b[1;91m{ PANIC }\tIDT Exception occured during execution...\n\r\t\t%s\n\r", error_codes[exception]);
+        asm volatile (
+            ".intel_syntax noprefix\n\t"
+            "mov rax, 0\n\t"
+            "mov rdx, 0xFFFFFFFFFFFFFFFF\n\t"
+            ".att_syntax prefix"
+        );
+        return;
+    }
+
     if (0 <= exception && exception < 32)
         printk("\x1b[1;91m{ PANIC }\tIDT Exception occured during execution...\n\r\t\t%s\n\r", error_codes[exception]);
     else
@@ -67,8 +87,7 @@ void KiInitExceptions() {
 
 __attribute__((interrupt)) void KiKeyboardHandler(int* __unused) {
     uint8_t sc = inb(0x60);
-    if (!(sc & 0x80))
-        KeyboardDriverMain(sc);
+    KeyboardDriverMain(sc);
     KiPicSendEoi(1);
     outb(0x20, 0x20);
 }
